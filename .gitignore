@@ -12,5 +12,6 @@ npm-debug.log*
 .data
 *.log
 apps/extension/build
+apps/web/next-env.d.ts
 packages/extraction/test/fixtures/private-*
 captures/

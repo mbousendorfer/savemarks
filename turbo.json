@@ -7,7 +7,16 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "DATABASE_URL",
+        "SAVEMARKS_TOKEN_PEPPER",
+        "SAVEMARKS_ALLOWED_EXTENSION_IDS",
+        "SAVEMARKS_DEV_ORIGINS",
+        "SAVEMARKS_BASE_URL",
+        "MEDIA_DATA_PATH",
+        "BACKUP_DATA_PATH"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
