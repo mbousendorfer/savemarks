@@ -28,6 +28,42 @@ describe("extraction diagnostics", () => {
     ]);
   });
 
+  it("inspects every observed array shape deeply without retaining values", () => {
+    const paths = fieldPaths({
+      data: {
+        timeline: {
+          instructions: [
+            {
+              entries: [
+                { content: { cursorType: "Bottom", value: "private-cursor" } },
+                {
+                  content: {
+                    itemContent: {
+                      tweet_results: {
+                        result: {
+                          rest_id: "private-id",
+                          legacy: { full_text: "private text" },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(paths).toContain(
+      "data.timeline.instructions[].entries[].content.cursorType",
+    );
+    expect(paths).toContain(
+      "data.timeline.instructions[].entries[].content.itemContent.tweet_results.result.legacy.full_text",
+    );
+    expect(JSON.stringify(paths)).not.toContain("private");
+  });
+
   it("extracts a cursor from an observed nested response", () => {
     expect(extractCursor({ data: { page_info: { end_cursor: "cursor-2" } } })).toBe(
       "cursor-2",

@@ -49,14 +49,17 @@ export function sanitizeUrl(value: string): string | null {
 
 export function fieldPaths(
   value: unknown,
-  maxDepth = 8,
+  maxDepth = 20,
   maxPaths = 2_000,
 ): string[] {
   const result = new Set<string>();
   const visit = (node: unknown, prefix: string, depth: number): void => {
     if (depth > maxDepth || result.size >= maxPaths || node === null) return;
     if (Array.isArray(node)) {
-      if (node.length > 0) visit(node[0], `${prefix}[]`, depth + 1);
+      for (const child of node) {
+        visit(child, `${prefix}[]`, depth + 1);
+        if (result.size >= maxPaths) break;
+      }
       return;
     }
     if (typeof node !== "object") return;

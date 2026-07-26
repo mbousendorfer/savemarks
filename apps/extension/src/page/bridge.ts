@@ -18,22 +18,31 @@ function post(message: unknown): void {
   );
 }
 
-function operationName(body: unknown): string | undefined {
-  if (typeof body !== "string") return undefined;
-  try {
-    const parsed = JSON.parse(body) as unknown;
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      "operationName" in parsed &&
-      typeof parsed.operationName === "string"
-    ) {
-      return parsed.operationName.slice(0, 256);
+function operationName(body: unknown, urlValue: string): string | undefined {
+  if (typeof body === "string") {
+    try {
+      const parsed = JSON.parse(body) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "operationName" in parsed &&
+        typeof parsed.operationName === "string"
+      ) {
+        return parsed.operationName.slice(0, 256);
+      }
+    } catch {
+      // Fall through to the observed GraphQL URL.
     }
+  }
+
+  try {
+    const parts = new URL(urlValue, window.location.origin).pathname.split("/");
+    const graphqlIndex = parts.indexOf("graphql");
+    const observed = graphqlIndex >= 0 ? parts[graphqlIndex + 2] : undefined;
+    return observed ? decodeURIComponent(observed).slice(0, 256) : undefined;
   } catch {
     return undefined;
   }
-  return undefined;
 }
 
 function relevant(paths: string[], url: string, operation?: string): boolean {
@@ -54,7 +63,7 @@ async function inspect(
   const source = url ? sourceForUrl(url) : null;
   if (!url || !source) return;
   const responseShape = fieldPaths(response);
-  const operation = operationName(body);
+  const operation = operationName(body, urlValue);
   if (!relevant(responseShape, url, operation)) return;
 
   post({
