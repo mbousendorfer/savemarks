@@ -12,9 +12,12 @@ function sendDiagnosticsState(enabled: boolean): void {
   );
 }
 
-void getSettings().then((settings) =>
-  sendDiagnosticsState(settings.diagnosticsEnabled),
-);
+async function refreshDiagnosticsState(): Promise<void> {
+  const settings = await getSettings();
+  sendDiagnosticsState(settings.diagnosticsEnabled);
+}
+
+void refreshDiagnosticsState();
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.diagnosticsEnabled) {
@@ -32,8 +35,20 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
   ) {
     return;
   }
+
+  const message = (event.data as { message?: unknown }).message;
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    message.type === "SAVEMARKS_BRIDGE_READY"
+  ) {
+    void refreshDiagnosticsState();
+    return;
+  }
+
   const parsed = pageBridgeMessageSchema.safeParse(
-    (event.data as { message?: unknown }).message,
+    message,
   );
   if (!parsed.success) return;
 

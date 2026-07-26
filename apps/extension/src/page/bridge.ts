@@ -121,6 +121,11 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
   }
 });
 
+post({
+  type: "SAVEMARKS_BRIDGE_READY",
+  version: 1,
+});
+
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const response = await nativeFetch(input, init);
   if (diagnosticsEnabled) {
