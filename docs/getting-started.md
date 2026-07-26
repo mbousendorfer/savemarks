@@ -1,6 +1,7 @@
 # Installation locale et premier lancement
 
-Ce guide part d’une machine neuve et mène jusqu’au pairing de l’extension.
+Ce guide part d’une machine neuve et mène jusqu’à l’affichage des bookmarks
+dans la bibliothèque web.
 
 ## 1. Installer les prérequis
 
@@ -89,7 +90,7 @@ cliquer sur l’icône de rechargement de SaveMarks.
 
 ## 6. Pairer l’extension
 
-1. Sur `http://localhost:3210`, cliquer **Generate pairing code**.
+1. Sur `http://localhost:3210`, cliquer **Pair extension**.
 2. Cliquer sur l’icône SaveMarks dans Chrome, puis **Settings**.
 3. Utiliser `http://localhost:3210` comme URL du serveur.
 4. Saisir le code de huit caractères.
@@ -98,9 +99,25 @@ cliquer sur l’icône de rechargement de SaveMarks.
 Le code expire après cinq minutes et ne fonctionne qu’une fois. Le popup doit
 ensuite afficher **Connected** et **online**.
 
-## 7. Ce qui fonctionne à ce stade
+## 7. Importer et consulter les bookmarks X
+
+1. Ouvrir `https://x.com/i/bookmarks` dans le navigateur où SaveMarks est
+   installé.
+2. Ouvrir le popup SaveMarks, puis cliquer **Settings**.
+3. Dans la section d’import X, lancer l’import historique. L’import est paginé,
+   peut être mis en pause et reprend à partir de son dernier curseur.
+4. Revenir sur [http://localhost:3210](http://localhost:3210). Les éléments
+   importés apparaissent directement dans la bibliothèque.
+
+La barre latérale filtre par source et type de média. La recherche porte sur le
+texte, le nom et le compte de l’auteur. Cliquer sur une carte ouvre sa fiche et
+le lien vers la publication originale.
+
+## 8. Ce qui fonctionne à ce stade
 
 - pairing sécurisé extension ↔ serveur ;
+- bibliothèque web alimentée par PostgreSQL ;
+- recherche, filtres, vues grille/liste et détail d’un bookmark ;
 - vérification de santé du serveur ;
 - queue IndexedDB persistante et retry ;
 - diagnostics réseau opt-in sur X et Instagram ;
@@ -114,7 +131,7 @@ L’extraction X repose sur une requête observée et validée localement, sans
 identifiant GraphQL inventé. L’extraction Instagram nécessite encore le
 protocole de test décrit dans [manual-testing.md](manual-testing.md).
 
-## 8. Arrêter et reprendre
+## 9. Arrêter et reprendre
 
 Arrêter le serveur de développement avec `Ctrl+C`.
 

@@ -3,10 +3,10 @@
 SaveMarks est une bibliothèque locale et auto-hébergée pour les favoris X et les
 publications enregistrées sur Instagram.
 
-> **État actuel : fondation + spike d’extraction.** Le serveur local, le pairing,
-> la base PostgreSQL, l’extension Chromium, la file hors-ligne et les outils de
-> diagnostic sont présents. L’extraction X/Instagram doit encore être validée
-> avec une session réelle avant d’implémenter la bibliothèque visuelle complète.
+> **État actuel : bibliothèque X utilisable.** L’application affiche les
+> bookmarks stockés dans PostgreSQL, avec recherche, filtres, vues grille/liste
+> et fiche détaillée. L’extension Chromium synchronise les nouvelles pages X et
+> sait importer l’historique. L’adaptateur Instagram reste à valider.
 
 ## Démarrage rapide
 
@@ -22,12 +22,13 @@ npm run setup
 `npm run setup` crée un `.env` local sécurisé, démarre PostgreSQL, applique les
 migrations et construit l’extension.
 
-Il reste ensuite trois actions manuelles :
+Il reste ensuite deux actions manuelles :
 
 1. charger `apps/extension/build` depuis `chrome://extensions` ;
-2. copier l’identifiant de l’extension dans `SAVEMARKS_ALLOWED_EXTENSION_IDS`
-   dans `.env` ;
-3. lancer `npm run dev`, puis ouvrir [http://localhost:3210](http://localhost:3210).
+2. lancer `npm run dev`, puis ouvrir [http://localhost:3210](http://localhost:3210).
+
+La page d’accueil est la bibliothèque : les bookmarks apparaissent dès qu’ils
+ont été synchronisés par l’extension.
 
 Le guide complet, captures comprises, est dans
 [docs/getting-started.md](docs/getting-started.md).

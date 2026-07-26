@@ -2,18 +2,18 @@
 
 ## Current milestone boundary
 
-This repository implements the Milestone 0 foundation and the tooling needed to
-run Milestone 1. The visual library is intentionally not implemented. X and
-Instagram adapters remain fail-closed until sanitized live captures verify their
-schemas.
+The local X workflow is implemented end to end: observation, normalization,
+historical pagination, PostgreSQL ingestion, and the visual library. The
+Instagram adapter remains fail-closed until sanitized live captures verify its
+schema.
 
 ## Components
 
 - `apps/extension` is the Manifest V3 client. It observes supported source tabs,
   keeps diagnostics and request templates locally, queues normalized items in
   IndexedDB, and sends only validated normalized bookmarks to SaveMarks.
-- `apps/web` is the local Next.js service. It exposes health, pairing, and
-  bookmark-ingest endpoints.
+- `apps/web` is the local Next.js service. It renders the bookmark library from
+  PostgreSQL and exposes health, pairing, and bookmark-ingest endpoints.
 - `packages/extraction` owns source adapters, capture sanitization, field-shape
   inspection, cursor discovery, and template validation.
 - `packages/shared` owns all Zod contracts and normalization utilities.
@@ -36,9 +36,9 @@ The MAIN-world bridge cannot execute arbitrary code and does not expose a generi
 network method. Captured response values are reduced to field paths before they
 cross the page boundary. Raw headers are never captured.
 
-Credentialed pagination replay is designed to occur in the page context through
-a future fixed adapter command, after live request templates are verified. The
-current bridge does not replay requests.
+Credentialed X pagination replay occurs in the page context through a fixed,
+validated adapter command. It uses the observed request template, is paced, and
+stops on authentication or rate-limit responses.
 
 ## Local storage
 
@@ -56,8 +56,8 @@ redacted error, retry count, and next retry time. Exponential backoff is capped 
 six hours. Authentication and rate-limit responses stop the current flush.
 Periodic alarms default to 15 minutes and survive service-worker suspension.
 
-Source pagination and historical import checkpoints will be added only after the
-live spike confirms cursor placement and request replay behavior.
+The X importer persists its cursor and progress so an interrupted historical
+import can resume. Instagram pagination is not enabled yet.
 
 ## Media flow
 
