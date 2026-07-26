@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@savemarks/shared",
     "@savemarks/database",
-    "@savemarks/extraction",
   ],
   poweredByHeader: false,
 };

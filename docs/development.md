@@ -1,0 +1,95 @@
+# Développement
+
+## Structure
+
+```text
+apps/web                 Next.js, API et écran de pairing
+apps/extension           extension Manifest V3
+packages/shared          modèles Zod et utilitaires communs
+packages/extraction      diagnostics et adapters de sources
+packages/database        schéma Drizzle, migrations et stockage média
+infrastructure           Docker Compose local et Unraid
+docs                     documentation opérateur et technique
+```
+
+## Environnement
+
+Les commandes racine chargent automatiquement `.env` avec `dotenv-cli`.
+
+Variables principales :
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | Connexion PostgreSQL utilisée hors Docker |
+| `SAVEMARKS_TOKEN_PEPPER` | Secret serveur pour hasher codes et tokens |
+| `SAVEMARKS_ALLOWED_EXTENSION_IDS` | IDs Chrome autorisés, séparés par virgules |
+| `SAVEMARKS_DEV_ORIGINS` | Origines web CORS autorisées en développement |
+| `SAVEMARKS_PORT` | Port publié par Compose |
+| `POSTGRES_DATA_PATH` | Données PostgreSQL sur l’hôte |
+| `MEDIA_DATA_PATH` | Médias téléchargés sur l’hôte |
+| `BACKUP_DATA_PATH` | Destination des sauvegardes |
+
+Ne jamais committer `.env`.
+
+## Commandes
+
+```bash
+pnpm dev
+pnpm build
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm fixtures:check
+pnpm check
+```
+
+Base de données :
+
+```bash
+pnpm infra:up
+pnpm infra:logs
+pnpm db:generate
+pnpm db:migrate
+pnpm infra:down
+```
+
+`db:generate` s’utilise après une modification de
+`packages/database/src/schema.ts`. Inspecter le SQL généré avant commit.
+
+## Ajouter une migration
+
+1. Modifier le schéma Drizzle.
+2. Lancer `pnpm db:generate`.
+3. Lire le nouveau fichier dans `packages/database/drizzle`.
+4. Lancer `pnpm db:migrate`.
+5. Exécuter `pnpm check`.
+
+## Ajouter une fixture d’extraction
+
+Les fixtures doivent provenir du panneau Diagnostics et ne contenir que le
+minimum nécessaire.
+
+```bash
+pnpm fixtures:check
+```
+
+Le scanner cherche cookies, bearer tokens, CSRF, sessions, emails et paramètres
+d’URL sensibles. Ce contrôle ne remplace pas l’inspection humaine.
+
+## Contrats de message
+
+Tout message page → content script est validé par Zod. Le bridge MAIN-world doit
+rester une interface fixe et minimale. Ne jamais lui ajouter d’exécution de code
+arbitraire, de capture de headers ou de requête générique.
+
+## Définition de terminé
+
+Avant de pousser :
+
+```bash
+pnpm check
+git status
+```
+
+Le build Next.js peut avoir besoin d’ouvrir un worker local. Dans un environnement
+sandboxé, utiliser un terminal standard si Turbopack échoue avec `EPERM`.

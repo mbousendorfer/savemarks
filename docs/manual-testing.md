@@ -5,14 +5,13 @@ manual, local-only activity.
 
 ## Before testing
 
-1. Copy `.env.example` to `.env` and set unique database credentials, token
-   pepper, and the unpacked extension ID.
-2. Start PostgreSQL with the development Compose file, generate/apply migrations,
-   then run the web and extension builds.
-3. Load `apps/extension/build` as an unpacked extension.
-4. Generate a pairing code at the local SaveMarks page and pair in extension
-   settings.
-5. Confirm `/api/health` is reachable and the popup reports online.
+Complete [getting-started.md](getting-started.md) first. In particular:
+
+1. run `pnpm setup`;
+2. load `apps/extension/build` as an unpacked extension;
+3. add its ID to `SAVEMARKS_ALLOWED_EXTENSION_IDS` in `.env`;
+4. run `pnpm dev`;
+5. pair the extension and confirm `/api/health` is reachable.
 
 ## Diagnostics safety check
 

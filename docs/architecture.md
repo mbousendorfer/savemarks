@@ -72,4 +72,6 @@ extension, shards by SHA-256, and blocks path traversal.
 `infrastructure/docker-compose.yml` runs the standalone Next.js server and
 PostgreSQL. Host paths default to `/data/postgres`, `/data/media`, and
 `/data/backups`, and all are configurable. Port 3210 is exposed by default for
-`http://scarif.local:3210` or a configured Tailscale hostname.
+`http://scarif.local:3210` or a configured Tailscale hostname. The web image
+bundles the committed Drizzle migrations and applies them before starting the
+Next.js process.

@@ -8,6 +8,8 @@ coverage
 pnpm-debug.log*
 .env
 .env.local
+.env.unraid
+.data
 *.log
 apps/extension/build
 packages/extraction/test/fixtures/private-*
