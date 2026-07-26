@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { getSettings, setSettings } from "../lib/settings";
 import "../ui.css";
 
-interface XImportState {
+interface ImportState {
   status: "running" | "paused" | "complete" | "error" | "waiting";
   imported: number;
   pages: number;
@@ -25,7 +25,8 @@ function Options() {
   const [paired, setPaired] = useState(false);
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
   const [syncInterval, setSyncInterval] = useState(15);
-  const [xImport, setXImport] = useState<XImportState>();
+  const [xImport, setXImport] = useState<ImportState>();
+  const [instagramImport, setInstagramImport] = useState<ImportState>();
   const [message, setMessage] = useState<string>();
 
   useEffect(() => {
@@ -35,15 +36,23 @@ function Options() {
       setDiagnosticsEnabled(settings.diagnosticsEnabled);
       setSyncInterval(settings.syncIntervalMinutes);
     });
-    void chrome.storage.local.get("xImportState").then((stored) => {
-      setXImport(stored.xImportState as XImportState | undefined);
+    void chrome.storage.local
+      .get(["xImportState", "instagramImportState"])
+      .then((stored) => {
+      setXImport(stored.xImportState as ImportState | undefined);
+      setInstagramImport(stored.instagramImportState as ImportState | undefined);
     });
     const listener = (
       changes: Record<string, chrome.storage.StorageChange>,
       area: string,
     ) => {
       if (area === "local" && changes.xImportState) {
-        setXImport(changes.xImportState.newValue as XImportState | undefined);
+        setXImport(changes.xImportState.newValue as ImportState | undefined);
+      }
+      if (area === "local" && changes.instagramImportState) {
+        setInstagramImport(
+          changes.instagramImportState.newValue as ImportState | undefined,
+        );
       }
     };
     chrome.storage.onChanged.addListener(listener);
@@ -96,6 +105,62 @@ function Options() {
         .map((tab) =>
           chrome.tabs
             .sendMessage(tab.id, { type: "CANCEL_X_IMPORT" })
+            .catch(() => undefined),
+        ),
+    );
+  }
+
+  async function instagramTabs(): Promise<chrome.tabs.Tab[]> {
+    const tabs = await chrome.tabs.query({
+      url: ["https://www.instagram.com/*/saved/*"],
+    });
+    return tabs.sort(
+      (left, right) => (right.lastAccessed ?? 0) - (left.lastAccessed ?? 0),
+    );
+  }
+
+  async function startInstagramImport(): Promise<void> {
+    const tabs = await instagramTabs();
+    const tab = tabs.find((candidate) => candidate.id !== undefined);
+    if (!tab?.id) {
+      setMessage(
+        "Open an Instagram Saved collection first, then try again.",
+      );
+      return;
+    }
+    const cursor =
+      instagramImport?.status === "paused" ||
+      instagramImport?.status === "error"
+        ? instagramImport.cursor
+        : undefined;
+    await chrome.storage.local.set({
+      instagramImportState: {
+        status: "waiting",
+        imported: instagramImport?.imported ?? 0,
+        pages: instagramImport?.pages ?? 0,
+        ...(cursor ? { cursor } : {}),
+      },
+    });
+    await chrome.tabs.sendMessage(tab.id, {
+      type: "START_INSTAGRAM_IMPORT",
+      cursor,
+    });
+    setMessage(
+      "Instagram import is waiting for the Saved page response.",
+    );
+  }
+
+  async function cancelInstagramImport(): Promise<void> {
+    const tabs = await instagramTabs();
+    await Promise.all(
+      tabs
+        .filter(
+          (tab): tab is chrome.tabs.Tab & { id: number } =>
+            tab.id !== undefined,
+        )
+        .map((tab) =>
+          chrome.tabs
+            .sendMessage(tab.id, { type: "CANCEL_INSTAGRAM_IMPORT" })
             .catch(() => undefined),
         ),
     );
@@ -203,6 +268,42 @@ function Options() {
               <button
                 className="secondary"
                 onClick={() => void cancelXImport()}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+        <div style={{ marginBottom: 22 }}>
+          <strong style={{ display: "block", marginBottom: 6 }}>
+            Instagram saved history
+          </strong>
+          <p className="muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
+            {instagramImport
+              ? `${instagramImport.status} · ${instagramImport.imported} items · ${instagramImport.pages} pages`
+              : "Open a Saved collection to import Instagram page by page."}
+          </p>
+          {instagramImport?.error && (
+            <p style={{ color: "#9d2f24", fontSize: 13 }}>
+              {instagramImport.error}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="primary"
+              disabled={instagramImport?.status === "running"}
+              onClick={() => void startInstagramImport()}
+            >
+              {instagramImport?.status === "paused" ||
+              instagramImport?.status === "error"
+                ? "Resume Instagram import"
+                : "Import Instagram history"}
+            </button>
+            {(instagramImport?.status === "running" ||
+              instagramImport?.status === "waiting") && (
+              <button
+                className="secondary"
+                onClick={() => void cancelInstagramImport()}
               >
                 Cancel
               </button>

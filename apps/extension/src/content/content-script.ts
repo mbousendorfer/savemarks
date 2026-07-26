@@ -18,20 +18,40 @@ async function refreshDiagnosticsState(): Promise<void> {
 }
 
 async function resumeHistoricalImport(): Promise<void> {
-  if (window.location.pathname !== "/i/bookmarks") return;
-  const stored = await chrome.storage.local.get("xImportState");
-  const state = stored.xImportState as
-    | { status?: string; cursor?: string }
-    | undefined;
-  if (state?.status === "running" || state?.status === "waiting") {
-    window.postMessage(
-      {
-        channel: "SAVEMARKS_CONTROL",
-        type: "START_X_IMPORT",
-        cursor: state.cursor,
-      },
-      window.location.origin,
-    );
+  if (window.location.pathname === "/i/bookmarks") {
+    const stored = await chrome.storage.local.get("xImportState");
+    const state = stored.xImportState as
+      | { status?: string; cursor?: string }
+      | undefined;
+    if (state?.status === "running" || state?.status === "waiting") {
+      window.postMessage(
+        {
+          channel: "SAVEMARKS_CONTROL",
+          type: "START_X_IMPORT",
+          cursor: state.cursor,
+        },
+        window.location.origin,
+      );
+    }
+  }
+  if (
+    window.location.hostname === "www.instagram.com" &&
+    window.location.pathname.includes("/saved/")
+  ) {
+    const stored = await chrome.storage.local.get("instagramImportState");
+    const state = stored.instagramImportState as
+      | { status?: string; cursor?: string }
+      | undefined;
+    if (state?.status === "running" || state?.status === "waiting") {
+      window.postMessage(
+        {
+          channel: "SAVEMARKS_CONTROL",
+          type: "START_INSTAGRAM_IMPORT",
+          cursor: state.cursor,
+        },
+        window.location.origin,
+      );
+    }
   }
 }
 
@@ -54,6 +74,26 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
   } else if (message.type === "CANCEL_X_IMPORT") {
     window.postMessage(
       { channel: "SAVEMARKS_CONTROL", type: "CANCEL_X_IMPORT" },
+      window.location.origin,
+    );
+    sendResponse({ ok: true });
+  } else if (message.type === "START_INSTAGRAM_IMPORT") {
+    const cursor =
+      "cursor" in message && typeof message.cursor === "string"
+        ? message.cursor
+        : undefined;
+    window.postMessage(
+      {
+        channel: "SAVEMARKS_CONTROL",
+        type: "START_INSTAGRAM_IMPORT",
+        cursor,
+      },
+      window.location.origin,
+    );
+    sendResponse({ ok: true });
+  } else if (message.type === "CANCEL_INSTAGRAM_IMPORT") {
+    window.postMessage(
+      { channel: "SAVEMARKS_CONTROL", type: "CANCEL_INSTAGRAM_IMPORT" },
       window.location.origin,
     );
     sendResponse({ ok: true });
@@ -86,6 +126,17 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
   ) {
     void refreshDiagnosticsState();
     void resumeHistoricalImport();
+    return;
+  }
+
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    message.type === "SAVEMARKS_INSTAGRAM_IMPORT_PROGRESS" &&
+    "payload" in message
+  ) {
+    void chrome.storage.local.set({ instagramImportState: message.payload });
     return;
   }
 

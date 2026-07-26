@@ -52,6 +52,10 @@ Settings, **Import X history** récupère les pages anciennes avec un délai
 conservateur entre chaque requête. L’import peut être annulé puis repris depuis
 le dernier curseur. Il s’arrête immédiatement sur 401, 403 ou 429.
 
+**Import Instagram history** suit le même principe, mais ne démarre le replay
+qu’après avoir observé une réponse valide dans une page Saved ou une collection
+ouverte. Il ne fabrique pas de cookies, de headers ni d’identifiant de requête.
+
 ## Diagnostics
 
 Ils sont désactivés par défaut.

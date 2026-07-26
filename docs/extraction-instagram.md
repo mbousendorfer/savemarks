@@ -2,9 +2,10 @@
 
 ## Status
 
-**Not live-validated.** No private endpoint, query identifier, response field
-mapping, collection mapping, or pagination behavior is invented in this
-repository.
+**Implemented, awaiting a valid live Saved response.** The current Instagram
+account returns Instagram’s own “Something went wrong” screen for All posts and
+individual collections. A direct read-only Saved feed check returned
+`useragent mismatch`; SaveMarks did not retry it with fabricated headers.
 
 ## Implemented and verified locally
 
@@ -14,7 +15,13 @@ repository.
 - Relevant save/cursor signals can be filtered and exported as a sanitized
   fixture.
 - Sanitized templates exclude headers and redact sensitive body keys.
-- The Instagram adapter fails closed until an observed schema mapper exists.
+- The adapter normalizes the Saved feed `items`/`next_max_id` shape and the
+  equivalent GraphQL connection shape.
+- Image, video, reel and carousel candidates are mapped to the shared model.
+- Historical import waits for a real Saved request, replays it in the open
+  Instagram tab at 1.5-second intervals, persists its cursor, and can resume.
+- 401, 403 and 429 stop the import immediately.
+- Contract tests cover image and reel normalization.
 
 ## Required live verification
 
@@ -26,9 +33,10 @@ Using the user's normal authenticated Instagram tab:
 4. Verify the observed response supplies shortcode/platform ID, author, caption,
    media candidates, type, collection, and cursor.
 5. Export, inspect, and scan a minimal fixture.
-6. Add contract tests and the mapper from that observed schema.
-7. Test a single fixed credentialed replay command in an open Instagram tab.
-8. Send one normalized item to the local API.
+6. Compare the live field paths with the implemented mapper and adjust only if
+   the observed schema differs.
+7. Test the fixed credentialed replay command in the open Instagram tab.
+8. Confirm one normalized item reaches the local API and web library.
 
 ## Fallback
 

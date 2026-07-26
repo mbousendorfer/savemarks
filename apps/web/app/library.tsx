@@ -12,11 +12,13 @@ import {
   LinkIcon,
   MagnifyingGlassIcon,
   RowsIcon,
+  TagIcon,
   TextTIcon,
   VideoCameraIcon,
   XIcon,
   XLogoIcon,
 } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type Source = "x" | "instagram";
@@ -50,6 +52,7 @@ export interface LibraryBookmark {
   savedAt: string | null;
   importedAt: string;
   archived: boolean;
+  tags: string[];
   author: {
     username: string;
     displayName: string | null;
@@ -58,7 +61,15 @@ export interface LibraryBookmark {
   media: LibraryMedia[];
 }
 
-type Filter = "all" | Source | "images" | "videos" | "text" | "archived";
+type Filter =
+  | "all"
+  | Source
+  | "images"
+  | "videos"
+  | "carousels"
+  | "reels"
+  | "text"
+  | "archived";
 type View = "grid" | "list";
 
 const filterLabels: Record<Filter, string> = {
@@ -67,6 +78,8 @@ const filterLabels: Record<Filter, string> = {
   instagram: "Instagram",
   images: "Images",
   videos: "Videos",
+  carousels: "Carousels",
+  reels: "Reels",
   text: "Text",
   archived: "Archived",
 };
@@ -102,14 +115,16 @@ function matchesFilter(bookmark: LibraryBookmark, filter: Filter): boolean {
     return bookmark.source === filter && !bookmark.archived;
   }
   if (filter === "images") {
-    return (
-      ["image", "carousel"].includes(bookmark.contentType) && !bookmark.archived
-    );
+    return bookmark.contentType === "image" && !bookmark.archived;
   }
   if (filter === "videos") {
-    return (
-      ["video", "reel"].includes(bookmark.contentType) && !bookmark.archived
-    );
+    return bookmark.contentType === "video" && !bookmark.archived;
+  }
+  if (filter === "carousels") {
+    return bookmark.contentType === "carousel" && !bookmark.archived;
+  }
+  if (filter === "reels") {
+    return bookmark.contentType === "reel" && !bookmark.archived;
   }
   return (
     ["text", "thread", "quote"].includes(bookmark.contentType) &&
@@ -200,6 +215,13 @@ function BookmarkCard({
           </span>
         </div>
         {copy && <p className="card-copy">{copy}</p>}
+        {bookmark.tags.length > 0 && (
+          <div className="card-tags">
+            {bookmark.tags.slice(0, 4).map((tag) => (
+              <span key={tag}>#{tag}</span>
+            ))}
+          </div>
+        )}
         <div className="card-footer">
           <span>{displayDate(bookmark)}</span>
           <span>{bookmark.contentType}</span>
@@ -212,10 +234,15 @@ function BookmarkCard({
 function Detail({
   bookmark,
   onClose,
+  onTagsChange,
 }: {
   bookmark: LibraryBookmark;
   onClose: () => void;
+  onTagsChange: (tags: string[]) => void;
 }) {
+  const [tagValue, setTagValue] = useState("");
+  const [savingTags, setSavingTags] = useState(false);
+  const [tagError, setTagError] = useState<string>();
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -225,6 +252,36 @@ function Detail({
   }, [onClose]);
 
   const media = primaryMedia(bookmark);
+
+  async function saveTags(nextTags: string[]): Promise<void> {
+    setSavingTags(true);
+    setTagError(undefined);
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmark.id}/tags`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tags: nextTags }),
+      });
+      if (!response.ok) throw new Error("Could not save tags");
+      const payload = (await response.json()) as { tags: string[] };
+      onTagsChange(payload.tags);
+      setTagValue("");
+    } catch (error) {
+      setTagError(error instanceof Error ? error.message : "Could not save tags");
+    } finally {
+      setSavingTags(false);
+    }
+  }
+
+  function addTag(): void {
+    const name = tagValue.trim().toLocaleLowerCase();
+    if (!name || bookmark.tags.includes(name)) {
+      setTagValue("");
+      return;
+    }
+    void saveTags([...bookmark.tags, name]);
+  }
+
   return (
     <div className="detail-backdrop" onMouseDown={onClose}>
       <section
@@ -251,6 +308,44 @@ function Detail({
           {(bookmark.text ?? bookmark.caption) && (
             <p className="detail-copy">{bookmark.text ?? bookmark.caption}</p>
           )}
+          <div className="tag-editor">
+            <div className="tag-list">
+              {bookmark.tags.map((tag) => (
+                <button
+                  key={tag}
+                  disabled={savingTags}
+                  onClick={() =>
+                    void saveTags(bookmark.tags.filter((value) => value !== tag))
+                  }
+                  title={`Remove ${tag}`}
+                >
+                  <TagIcon size={13} weight="fill" />
+                  {tag}
+                  <XIcon size={11} />
+                </button>
+              ))}
+            </div>
+            <div className="tag-input">
+              <TagIcon size={16} />
+              <input
+                value={tagValue}
+                disabled={savingTags}
+                maxLength={256}
+                placeholder="Add a tag…"
+                onChange={(event) => setTagValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === ",") {
+                    event.preventDefault();
+                    addTag();
+                  }
+                }}
+              />
+              <button disabled={!tagValue.trim() || savingTags} onClick={addTag}>
+                Add
+              </button>
+            </div>
+            {tagError && <p className="tag-error">{tagError}</p>}
+          </div>
           <dl className="detail-meta">
             <div>
               <dt>Published</dt>
@@ -337,15 +432,27 @@ export function Library({
 }: {
   initialBookmarks: LibraryBookmark[];
 }) {
+  const router = useRouter();
+  const [bookmarks, setBookmarks] = useState(initialBookmarks);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("grid");
   const [selected, setSelected] = useState<LibraryBookmark>();
   const [pairing, setPairing] = useState(false);
 
+  useEffect(() => setBookmarks(initialBookmarks), [initialBookmarks]);
+
+  useEffect(() => {
+    void fetch("/api/media/sync", { method: "POST" });
+    const refreshes = [5_000, 15_000, 30_000, 60_000].map((delay) =>
+      window.setTimeout(() => router.refresh(), delay),
+    );
+    return () => refreshes.forEach((timer) => window.clearTimeout(timer));
+  }, [router]);
+
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
-    return initialBookmarks.filter((bookmark) => {
+    return bookmarks.filter((bookmark) => {
       if (!matchesFilter(bookmark, filter)) return false;
       if (!needle) return true;
       return [
@@ -354,37 +461,43 @@ export function Library({
         bookmark.author.displayName,
         bookmark.author.username,
         bookmark.contentType,
+        ...bookmark.tags,
       ]
         .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase()
         .includes(needle);
     });
-  }, [filter, initialBookmarks, query]);
+  }, [bookmarks, filter, query]);
 
   const counts = useMemo(
     () => ({
-      all: initialBookmarks.filter((item) => !item.archived).length,
-      x: initialBookmarks.filter((item) => item.source === "x" && !item.archived)
+      all: bookmarks.filter((item) => !item.archived).length,
+      x: bookmarks.filter((item) => item.source === "x" && !item.archived)
         .length,
-      instagram: initialBookmarks.filter(
+      instagram: bookmarks.filter(
         (item) => item.source === "instagram" && !item.archived,
       ).length,
-      images: initialBookmarks.filter(
-        (item) =>
-          ["image", "carousel"].includes(item.contentType) && !item.archived,
+      images: bookmarks.filter(
+        (item) => item.contentType === "image" && !item.archived,
       ).length,
-      videos: initialBookmarks.filter(
-        (item) => ["video", "reel"].includes(item.contentType) && !item.archived,
+      videos: bookmarks.filter(
+        (item) => item.contentType === "video" && !item.archived,
       ).length,
-      text: initialBookmarks.filter(
+      carousels: bookmarks.filter(
+        (item) => item.contentType === "carousel" && !item.archived,
+      ).length,
+      reels: bookmarks.filter(
+        (item) => item.contentType === "reel" && !item.archived,
+      ).length,
+      text: bookmarks.filter(
         (item) =>
           ["text", "thread", "quote"].includes(item.contentType) &&
           !item.archived,
       ).length,
-      archived: initialBookmarks.filter((item) => item.archived).length,
+      archived: bookmarks.filter((item) => item.archived).length,
     }),
-    [initialBookmarks],
+    [bookmarks],
   );
 
   return (
@@ -405,6 +518,8 @@ export function Library({
               ["instagram", InstagramLogoIcon],
               ["images", ImageIcon],
               ["videos", VideoCameraIcon],
+              ["carousels", GridFourIcon],
+              ["reels", VideoCameraIcon],
               ["text", TextTIcon],
               ["archived", ArchiveIcon],
             ] as const
@@ -501,7 +616,20 @@ export function Library({
       </section>
 
       {selected && (
-        <Detail bookmark={selected} onClose={() => setSelected(undefined)} />
+        <Detail
+          bookmark={selected}
+          onClose={() => setSelected(undefined)}
+          onTagsChange={(nextTags) => {
+            setBookmarks((items) =>
+              items.map((item) =>
+                item.id === selected.id ? { ...item, tags: nextTags } : item,
+              ),
+            );
+            setSelected((item) =>
+              item ? { ...item, tags: nextTags } : undefined,
+            );
+          }}
+        />
       )}
       {pairing && <PairingDialog onClose={() => setPairing(false)} />}
     </main>

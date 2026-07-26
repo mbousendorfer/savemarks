@@ -5,8 +5,10 @@ import {
   mediaAssets,
 } from "@savemarks/database";
 import { bookmarkIngestSchema, normalizedUrlHash } from "@savemarks/shared";
+import { and, eq } from "drizzle-orm";
 import { corsHeaders, originAllowed } from "../../../lib/cors";
 import { authenticate } from "../../../lib/auth";
+import { startMediaSync } from "../../../lib/media-download";
 
 export async function OPTIONS(request: Request) {
   return new Response(null, {
@@ -53,6 +55,35 @@ export async function POST(request: Request) {
       .returning({ id: authors.id });
     if (!author) throw new Error("Could not resolve author");
 
+    const [existing] = await tx
+      .select({ id: bookmarks.id })
+      .from(bookmarks)
+      .where(
+        and(
+          eq(bookmarks.source, item.source),
+          eq(bookmarks.sourceItemId, item.sourceItemId),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      await tx
+        .update(bookmarks)
+        .set({
+          canonicalUrl: item.canonicalUrl,
+          normalizedUrlHash: normalizedUrlHash(item.canonicalUrl),
+          contentType: item.contentType,
+          text: item.text,
+          caption: item.caption,
+          authorId: author.id,
+          publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
+          ...(item.savedAt ? { savedAt: new Date(item.savedAt) } : {}),
+          rawSchemaVersion: item.rawSchemaVersion,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookmarks.id, existing.id));
+      return { duplicate: true, id: existing.id };
+    }
+
     const [bookmark] = await tx
       .insert(bookmarks)
       .values({
@@ -69,12 +100,9 @@ export async function POST(request: Request) {
         importedAt: new Date(item.importedAt),
         rawSchemaVersion: item.rawSchemaVersion,
       })
-      .onConflictDoNothing({
-        target: [bookmarks.source, bookmarks.sourceItemId],
-      })
       .returning({ id: bookmarks.id });
 
-    if (!bookmark) return { duplicate: true };
+    if (!bookmark) throw new Error("Could not store bookmark");
     if (item.media.length > 0) {
       await tx.insert(mediaAssets).values(
         item.media.map((media) => ({
@@ -92,5 +120,6 @@ export async function POST(request: Request) {
     }
     return { duplicate: false, id: bookmark.id };
   });
+  if (!result.duplicate) void startMediaSync(25);
   return Response.json(result, { status: result.duplicate ? 200 : 201, headers });
 }

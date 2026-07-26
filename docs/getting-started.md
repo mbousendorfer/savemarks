@@ -110,14 +110,21 @@ ensuite afficher **Connected** et **online**.
    importés apparaissent directement dans la bibliothèque.
 
 La barre latérale filtre par source et type de média. La recherche porte sur le
-texte, le nom et le compte de l’auteur. Cliquer sur une carte ouvre sa fiche et
-le lien vers la publication originale.
+texte, le nom, le compte de l’auteur et les tags. Cliquer sur une carte ouvre sa
+fiche, permet d’ajouter ou retirer des tags et donne le lien vers la publication
+originale.
+
+Les médias synchronisés sont téléchargés automatiquement sous
+`.data/media/x/media/pictures` et `.data/media/x/media/videos`. En Docker, ces
+dossiers se trouvent sous le volume configuré par `MEDIA_DATA_PATH`.
 
 ## 8. Ce qui fonctionne à ce stade
 
 - pairing sécurisé extension ↔ serveur ;
 - bibliothèque web alimentée par PostgreSQL ;
-- recherche, filtres, vues grille/liste et détail d’un bookmark ;
+- recherche, filtres média précis, vues grille/liste et détail d’un bookmark ;
+- tags personnalisés éditables et recherchables ;
+- archivage local automatique des images et vidéos X ;
 - vérification de santé du serveur ;
 - queue IndexedDB persistante et retry ;
 - diagnostics réseau opt-in sur X et Instagram ;
@@ -125,11 +132,13 @@ le lien vers la publication originale.
 - ingestion des pages de bookmarks X observées ;
 - import historique X paginé, annulable et reprenable depuis Settings ;
 - ingestion API de favoris déjà normalisés ;
+- importeur Instagram paginé en attente d’une réponse Saved réelle valide ;
 - schéma PostgreSQL et stockage média content-addressed.
 
 L’extraction X repose sur une requête observée et validée localement, sans
-identifiant GraphQL inventé. L’extraction Instagram nécessite encore le
-protocole de test décrit dans [manual-testing.md](manual-testing.md).
+identifiant GraphQL inventé. L’interface Saved Instagram renvoie actuellement
+sa propre erreur sur le compte testé ; voir
+[extraction-instagram.md](extraction-instagram.md) pour le statut exact.
 
 ## 9. Arrêter et reprendre
 

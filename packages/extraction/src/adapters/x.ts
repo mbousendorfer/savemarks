@@ -150,7 +150,10 @@ export function parseXBookmark(value: unknown): NormalizedBookmark | null {
   };
 }
 
-export function parseXBookmarksPage(value: unknown): {
+export function parseXBookmarksPage(
+  value: unknown,
+  order: { savedAtAnchor?: number; savedAtOffset?: number } = {},
+): {
   items: NormalizedBookmark[];
   cursor?: string;
 } {
@@ -178,7 +181,14 @@ export function parseXBookmarksPage(value: unknown): {
     const bookmark = parseXBookmark(
       nested(content, "itemContent", "tweet_results", "result"),
     );
-    if (bookmark) items.push(bookmark);
+    if (bookmark) {
+      const anchor = order.savedAtAnchor ?? Date.now();
+      const offset = order.savedAtOffset ?? 0;
+      bookmark.savedAt = new Date(
+        anchor - (offset + items.length) * 1_000,
+      ).toISOString();
+      items.push(bookmark);
+    }
   }
 
   return { items, ...(cursor ? { cursor } : {}) };

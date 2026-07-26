@@ -53,11 +53,12 @@ field shapes and is unused by default.
 
 ## Media validation
 
-Media work must enforce byte limits before buffering, allowlist MIME types,
-verify magic bytes, reject redirects outside HTTP(S), and cap redirect counts.
-Paths derive only from verified SHA-256 and server-selected extensions. The
-current foundation implements hashing and traversal-safe path resolution; the
-network downloader is not yet enabled.
+The media downloader enforces byte limits, allowlists source CDN hostnames and
+MIME types, validates every redirect, and caps redirect counts. Paths derive
+only from SHA-256 and server-selected extensions, and traversal-safe resolution
+keeps every file below `MEDIA_DATA_PATH`. X media is accepted only from
+`pbs.twimg.com` and `video.twimg.com`; Instagram media is limited to Instagram
+and Facebook CDN hostnames.
 
 ## Operational requirements
 

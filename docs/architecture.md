@@ -56,16 +56,17 @@ redacted error, retry count, and next retry time. Exponential backoff is capped 
 six hours. Authentication and rate-limit responses stop the current flush.
 Periodic alarms default to 15 minutes and survive service-worker suspension.
 
-The X importer persists its cursor and progress so an interrupted historical
-import can resume. Instagram pagination is not enabled yet.
+The X and Instagram importers persist their cursor and progress so an
+interrupted historical import can resume. Instagram replay starts only after a
+valid Saved response has supplied an observed request template.
 
 ## Media flow
 
-The database already records source URL, MIME type, dimensions, content hash,
-local path, and status. The first planned download path is server-side CDN fetch.
-If a CDN requires the browser session, the extension will upload bytes without
-cookies. The storage helper accepts an allowlisted MIME type, derives the
-extension, shards by SHA-256, and blocks path traversal.
+The database records source URL, MIME type, dimensions, content hash, local
+path, and status. The server downloads allowlisted CDN media and stores it under
+`<source>/media/pictures` or `<source>/media/videos`, using a SHA-256 filename.
+The web library serves stored assets through a local media route and keeps the
+remote URL only as a fallback while a download is pending.
 
 ## Unraid deployment
 

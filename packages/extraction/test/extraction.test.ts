@@ -4,6 +4,7 @@ import {
   cursorPaths,
   extractCursor,
   fieldPaths,
+  parseInstagramBookmarksPage,
   parseXBookmarksPage,
   sanitizeUrl,
 } from "../src";
@@ -172,5 +173,109 @@ describe("observed X bookmarks schema", () => {
         ],
       }),
     ]);
+  });
+});
+
+describe("observed Instagram saved schema", () => {
+  it("normalizes a paginated image from the saved feed", () => {
+    const page = parseInstagramBookmarksPage({
+      items: [
+        {
+          pk: "123456789",
+          code: "DExample",
+          media_type: 1,
+          taken_at: 1_774_000_000,
+          caption: { text: "Saved caption" },
+          user: {
+            pk: "42",
+            username: "designer",
+            full_name: "Product Designer",
+            profile_pic_url: "https://scontent.cdninstagram.com/avatar.jpg",
+          },
+          image_versions2: {
+            candidates: [
+              {
+                url: "https://scontent.cdninstagram.com/small.jpg",
+                width: 320,
+                height: 320,
+              },
+              {
+                url: "https://scontent.cdninstagram.com/large.jpg",
+                width: 1080,
+                height: 1350,
+              },
+            ],
+          },
+        },
+      ],
+      more_available: true,
+      next_max_id: "next-page",
+    });
+
+    expect(page.cursor).toBe("next-page");
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        source: "instagram",
+        sourceItemId: "123456789",
+        canonicalUrl: "https://www.instagram.com/p/DExample/",
+        contentType: "image",
+        caption: "Saved caption",
+        author: expect.objectContaining({
+          username: "designer",
+          displayName: "Product Designer",
+        }),
+        media: [
+          expect.objectContaining({
+            sourceUrl: "https://scontent.cdninstagram.com/large.jpg",
+            type: "image",
+            width: 1080,
+            height: 1350,
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it("normalizes a reel and keeps its local-download candidates", () => {
+    const page = parseInstagramBookmarksPage({
+      data: {
+        xdt_api__v1__feed__saved__posts: {
+          items: [
+            {
+              pk: "987654321",
+              code: "DReel",
+              media_type: 2,
+              product_type: "clips",
+              user: { pk: "7", username: "motion" },
+              video_versions: [
+                {
+                  url: "https://scontent.cdninstagram.com/reel.mp4",
+                  width: 1080,
+                  height: 1920,
+                },
+              ],
+              image_versions2: {
+                candidates: [
+                  {
+                    url: "https://scontent.cdninstagram.com/reel.jpg",
+                    width: 1080,
+                    height: 1920,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(page.items[0]).toMatchObject({
+      canonicalUrl: "https://www.instagram.com/reel/DReel/",
+      contentType: "reel",
+      media: [
+        { type: "video", mimeType: "video/mp4" },
+        { type: "thumbnail", mimeType: "image/jpeg" },
+      ],
+    });
   });
 });

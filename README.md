@@ -5,8 +5,10 @@ publications enregistrées sur Instagram.
 
 > **État actuel : bibliothèque X utilisable.** L’application affiche les
 > bookmarks stockés dans PostgreSQL, avec recherche, filtres, vues grille/liste
-> et fiche détaillée. L’extension Chromium synchronise les nouvelles pages X et
-> sait importer l’historique. L’adaptateur Instagram reste à valider.
+> et fiche détaillée. Les médias X sont archivés sur disque et les bookmarks
+> peuvent être taggés. L’extension Chromium synchronise les nouvelles pages X et
+> sait importer l’historique. L’importeur Instagram est implémenté mais attend
+> encore une réponse Saved valide de la session réelle pour sa validation finale.
 
 ## Démarrage rapide
 
