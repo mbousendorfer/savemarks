@@ -1,0 +1,17 @@
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
+
+let cached: ReturnType<typeof drizzle<typeof schema>> | undefined;
+
+export function database(databaseUrl = process.env.DATABASE_URL) {
+  if (!databaseUrl) throw new Error("DATABASE_URL is required");
+  if (!cached) {
+    const client = postgres(databaseUrl, { max: 10, prepare: false });
+    cached = drizzle(client, { schema });
+  }
+  return cached;
+}
+
+export * from "./media";
+export * from "./schema";

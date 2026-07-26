@@ -1,0 +1,31 @@
+{
+  "name": "savemarks",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "fixtures:check": "node --experimental-strip-types scripts/check-fixtures.ts",
+    "db:generate": "pnpm --filter @savemarks/database generate",
+    "db:migrate": "pnpm --filter @savemarks/database migrate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.2.12",
+    "prettier": "^3.8.2",
+    "tsx": "^4.21.0",
+    "turbo": "^2.10.7",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.1.10"
+  }
+}
