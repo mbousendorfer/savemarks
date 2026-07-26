@@ -6,7 +6,7 @@ committing a fixture:
 1. confirm diagnostics was limited to a supported source tab;
 2. inspect the export manually;
 3. record its `sourceSchemaDate`;
-4. run `pnpm fixtures:check`;
+4. run `npm run fixtures:check`;
 5. ensure the fixture contains shapes and redacted URLs, never headers, cookies,
    request credentials, tokens, personal text, or raw media URLs.
 

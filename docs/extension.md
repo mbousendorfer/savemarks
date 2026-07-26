@@ -3,13 +3,13 @@
 ## Construire
 
 ```bash
-pnpm extension:build
+npm run extension:build
 ```
 
 Le résultat chargeable se trouve dans `apps/extension/build`. Ce dossier est
 généré et n’est pas versionné.
 
-En développement, `pnpm dev` reconstruit automatiquement l’extension. Chrome ne
+En développement, `npm run dev` reconstruit automatiquement l’extension. Chrome ne
 recharge pas automatiquement un service worker MV3 : utiliser le bouton
 **Recharger** dans `chrome://extensions`.
 
@@ -63,7 +63,7 @@ Le panneau permet de filtrer par URL, opération et champ, puis d’exporter un 
 sanitisé. Ne jamais committer une capture avant :
 
 ```bash
-pnpm fixtures:check
+npm run fixtures:check
 ```
 
 et une inspection manuelle. Voir [manual-testing.md](manual-testing.md).

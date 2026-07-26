@@ -7,7 +7,7 @@ Ce guide part d’une machine neuve et mène jusqu’au pairing de l’extension
 Il faut :
 
 - Node.js 22 ou plus récent ;
-- pnpm 11 via Corepack ;
+- npm 10 ou plus récent (fourni avec Node.js) ;
 - Docker Desktop, OrbStack ou un moteur Docker compatible Compose v2 ;
 - Chrome, Chromium, Brave ou Edge.
 
@@ -15,8 +15,7 @@ Vérification :
 
 ```bash
 node --version
-corepack enable
-pnpm --version
+npm --version
 docker compose version
 ```
 
@@ -25,13 +24,13 @@ docker compose version
 ```bash
 git clone https://github.com/mbousendorfer/savemarks.git
 cd savemarks
-pnpm install
+npm install
 ```
 
 ## 3. Préparer l’environnement
 
 ```bash
-pnpm setup
+npm run setup
 ```
 
 Cette commande :
@@ -63,7 +62,7 @@ Plusieurs installations peuvent être séparées par des virgules.
 ## 5. Lancer les applications
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Cette commande garde deux processus actifs :
@@ -111,14 +110,14 @@ Arrêter le serveur de développement avec `Ctrl+C`.
 Arrêter PostgreSQL sans supprimer les données :
 
 ```bash
-pnpm infra:down
+npm run infra:down
 ```
 
 Reprendre plus tard :
 
 ```bash
-pnpm infra:up
-pnpm dev
+npm run infra:up
+npm run dev
 ```
 
 Voir [troubleshooting.md](troubleshooting.md) si une étape échoue.

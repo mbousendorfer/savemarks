@@ -2,26 +2,31 @@
   "name": "savemarks",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "npm@11.17.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
   },
   "scripts": {
     "build": "turbo build",
     "dev": "dotenv -e .env -- turbo dev",
-    "setup": "pnpm env:init && pnpm infra:up && pnpm db:migrate && pnpm extension:build",
+    "setup": "npm run env:init && npm run infra:up && npm run db:migrate && npm run extension:build",
     "env:init": "node --experimental-strip-types scripts/init-env.ts",
     "infra:up": "docker compose --env-file .env -f infrastructure/docker-compose.dev.yml up -d --wait",
     "infra:down": "docker compose --env-file .env -f infrastructure/docker-compose.dev.yml down",
     "infra:logs": "docker compose --env-file .env -f infrastructure/docker-compose.dev.yml logs -f postgres",
-    "extension:build": "pnpm --filter @savemarks/extension build",
+    "extension:build": "npm run build --workspace=@savemarks/extension",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "fixtures:check": "node --experimental-strip-types scripts/check-fixtures.ts",
-    "db:generate": "dotenv -e .env -- pnpm --filter @savemarks/database generate",
-    "db:migrate": "dotenv -e .env -- pnpm --filter @savemarks/database migrate",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm fixtures:check && pnpm build"
+    "db:generate": "dotenv -e .env -- npm run generate --workspace=@savemarks/database",
+    "db:migrate": "dotenv -e .env -- npm run migrate --workspace=@savemarks/database",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run fixtures:check && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -36,5 +41,13 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true,
+    "fsevents@2.3.3": true
   }
 }

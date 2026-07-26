@@ -39,7 +39,7 @@ Tailscale HTTPS hostname when the local network is not trusted.
 
 Diagnostics is explicit opt-in and bounded. Exports contain URLs, operation
 names, status codes, field paths, and cursor paths—not raw response values or
-headers. Run `pnpm fixtures:check` and manually inspect every fixture before
+headers. Run `npm run fixtures:check` and manually inspect every fixture before
 commit. Production raw-payload storage is disabled; the debug table stores only
 field shapes and is unused by default.
 

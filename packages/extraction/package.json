@@ -13,7 +13,7 @@
     "test": "vitest run --exclude 'dist/**'"
   },
   "dependencies": {
-    "@savemarks/shared": "workspace:*",
+    "@savemarks/shared": "0.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

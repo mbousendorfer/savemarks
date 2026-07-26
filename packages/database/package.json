@@ -17,7 +17,7 @@
     "migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@savemarks/shared": "workspace:*",
+    "@savemarks/shared": "0.0.0",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.8"
   },

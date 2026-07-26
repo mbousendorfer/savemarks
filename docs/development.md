@@ -34,35 +34,35 @@ Ne jamais committer `.env`.
 ## Commandes
 
 ```bash
-pnpm dev
-pnpm build
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm fixtures:check
-pnpm check
+npm run dev
+npm run build
+npm run typecheck
+npm run lint
+npm run test
+npm run fixtures:check
+npm run check
 ```
 
 Base de données :
 
 ```bash
-pnpm infra:up
-pnpm infra:logs
-pnpm db:generate
-pnpm db:migrate
-pnpm infra:down
+npm run infra:up
+npm run infra:logs
+npm run db:generate
+npm run db:migrate
+npm run infra:down
 ```
 
-`db:generate` s’utilise après une modification de
+`npm run db:generate` s’utilise après une modification de
 `packages/database/src/schema.ts`. Inspecter le SQL généré avant commit.
 
 ## Ajouter une migration
 
 1. Modifier le schéma Drizzle.
-2. Lancer `pnpm db:generate`.
+2. Lancer `npm run db:generate`.
 3. Lire le nouveau fichier dans `packages/database/drizzle`.
-4. Lancer `pnpm db:migrate`.
-5. Exécuter `pnpm check`.
+4. Lancer `npm run db:migrate`.
+5. Exécuter `npm run check`.
 
 ## Ajouter une fixture d’extraction
 
@@ -70,7 +70,7 @@ Les fixtures doivent provenir du panneau Diagnostics et ne contenir que le
 minimum nécessaire.
 
 ```bash
-pnpm fixtures:check
+npm run fixtures:check
 ```
 
 Le scanner cherche cookies, bearer tokens, CSRF, sessions, emails et paramètres
@@ -87,7 +87,7 @@ arbitraire, de capture de headers ou de requête générique.
 Avant de pousser :
 
 ```bash
-pnpm check
+npm run check
 git status
 ```
 

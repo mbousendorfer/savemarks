@@ -5,7 +5,7 @@ coverage
 .turbo
 .DS_Store
 *.tsbuildinfo
-pnpm-debug.log*
+npm-debug.log*
 .env
 .env.local
 .env.unraid

@@ -73,8 +73,8 @@ curl http://scarif.local:3210/api/health
 L’extension peut être construite sur une machine de développement avec :
 
 ```bash
-pnpm install
-pnpm extension:build
+npm install
+npm run extension:build
 ```
 
 Charger `apps/extension/build` dans Chrome, puis utiliser

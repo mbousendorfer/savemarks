@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@crxjs/vite-plugin": "^2.7.1",
-    "@savemarks/extraction": "workspace:*",
-    "@savemarks/shared": "workspace:*",
+    "@savemarks/extraction": "0.0.0",
+    "@savemarks/shared": "0.0.0",
     "idb": "^8.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

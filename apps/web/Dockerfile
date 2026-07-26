@@ -1,22 +1,19 @@
 FROM node:22-alpine AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
 WORKDIR /app
 
 FROM base AS dependencies
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json package-lock.json turbo.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/extension/package.json apps/extension/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/extraction/package.json packages/extraction/package.json
 COPY packages/shared/package.json packages/shared/package.json
-RUN pnpm install --frozen-lockfile
+RUN npm ci
 
 FROM dependencies AS build
 COPY . .
-RUN pnpm --filter @savemarks/web build
-RUN pnpm exec esbuild packages/database/src/migrate.ts \
+RUN npm run build --workspace=@savemarks/web
+RUN npx --no-install esbuild packages/database/src/migrate.ts \
   --bundle \
   --platform=node \
   --format=esm \

@@ -7,10 +7,10 @@ manual, local-only activity.
 
 Complete [getting-started.md](getting-started.md) first. In particular:
 
-1. run `pnpm setup`;
+1. run `npm run setup`;
 2. load `apps/extension/build` as an unpacked extension;
 3. add its ID to `SAVEMARKS_ALLOWED_EXTENSION_IDS` in `.env`;
-4. run `pnpm dev`;
+4. run `npm run dev`;
 5. pair the extension and confirm `/api/health` is reachable.
 
 ## Diagnostics safety check
@@ -26,7 +26,7 @@ values, CSRF values, session IDs, personal post text, captions, or media URLs.
 - Confirm canonical ID/URL, text, author, media, quote, and any conversation
   structure can be located in the observed schema.
 - Load one more bookmark page and confirm a cursor path.
-- Export a minimal fixture, run `pnpm fixtures:check`, and inspect it manually.
+- Export a minimal fixture, run `npm run fixtures:check`, and inspect it manually.
 - Only then implement/test the X mapper and one-page replay.
 
 ## Instagram spike checklist

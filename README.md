@@ -10,17 +10,16 @@ publications enregistrées sur Instagram.
 
 ## Démarrage rapide
 
-Prérequis : Node.js 22+, pnpm 11, Docker et Chrome/Chromium.
+Prérequis : Node.js 22+ (npm est inclus), Docker et Chrome/Chromium.
 
 ```bash
 git clone https://github.com/mbousendorfer/savemarks.git
 cd savemarks
-corepack enable
-pnpm install
-pnpm setup
+npm install
+npm run setup
 ```
 
-`pnpm setup` crée un `.env` local sécurisé, démarre PostgreSQL, applique les
+`npm run setup` crée un `.env` local sécurisé, démarre PostgreSQL, applique les
 migrations et construit l’extension.
 
 Il reste ensuite trois actions manuelles :
@@ -28,7 +27,7 @@ Il reste ensuite trois actions manuelles :
 1. charger `apps/extension/build` depuis `chrome://extensions` ;
 2. copier l’identifiant de l’extension dans `SAVEMARKS_ALLOWED_EXTENSION_IDS`
    dans `.env` ;
-3. lancer `pnpm dev`, puis ouvrir [http://localhost:3210](http://localhost:3210).
+3. lancer `npm run dev`, puis ouvrir [http://localhost:3210](http://localhost:3210).
 
 Le guide complet, captures comprises, est dans
 [docs/getting-started.md](docs/getting-started.md).
@@ -37,13 +36,13 @@ Le guide complet, captures comprises, est dans
 
 | Commande | Effet |
 | --- | --- |
-| `pnpm setup` | Prépare un environnement local neuf |
-| `pnpm dev` | Lance le web et reconstruit l’extension à chaque changement |
-| `pnpm extension:build` | Construit uniquement l’extension |
-| `pnpm infra:up` | Démarre PostgreSQL |
-| `pnpm infra:down` | Arrête PostgreSQL sans supprimer les données |
-| `pnpm db:migrate` | Applique les migrations existantes |
-| `pnpm check` | Typecheck, lint, tests, scan des fixtures et build |
+| `npm run setup` | Prépare un environnement local neuf |
+| `npm run dev` | Lance le web et reconstruit l’extension à chaque changement |
+| `npm run extension:build` | Construit uniquement l’extension |
+| `npm run infra:up` | Démarre PostgreSQL |
+| `npm run infra:down` | Arrête PostgreSQL sans supprimer les données |
+| `npm run db:migrate` | Applique les migrations existantes |
+| `npm run check` | Typecheck, lint, tests, scan des fixtures et build |
 
 ## Documentation
 
@@ -63,4 +62,4 @@ Le guide complet, captures comprises, est dans
 SaveMarks ne transmet jamais les cookies X ou Instagram au serveur. Aucun
 endpoint privé, identifiant GraphQL ou format de réponse non vérifié n’est
 codé en dur. Les diagnostics sont désactivés par défaut et leurs exports doivent
-passer `pnpm fixtures:check` avant tout commit.
+passer `npm run fixtures:check` avant tout commit.

@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
-    "@savemarks/database": "workspace:*",
-    "@savemarks/shared": "workspace:*",
+    "@savemarks/database": "0.0.0",
+    "@savemarks/shared": "0.0.0",
     "class-variance-authority": "^0.7.1",
     "drizzle-orm": "^0.45.2",
     "next": "^16.2.12",

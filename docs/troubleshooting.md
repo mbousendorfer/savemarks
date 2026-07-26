@@ -1,6 +1,6 @@
 # Dépannage
 
-## `pnpm setup` dit que Docker est indisponible
+## `npm run setup` dit que Docker est indisponible
 
 Vérifier que Docker Desktop, OrbStack ou le daemon Docker est démarré :
 
@@ -9,7 +9,7 @@ docker info
 docker compose version
 ```
 
-Puis relancer `pnpm setup`.
+Puis relancer `npm run setup`.
 
 ## Le port 5432 est déjà utilisé
 
@@ -31,8 +31,8 @@ configuration actuelle de Next.js écoute explicitement sur 3210.
 ## L’application affiche une erreur de base de données
 
 ```bash
-pnpm infra:up
-pnpm db:migrate
+npm run infra:up
+npm run db:migrate
 ```
 
 Puis vérifier `DATABASE_URL` dans `.env`.
@@ -41,7 +41,7 @@ Puis vérifier `DATABASE_URL` dans `.env`.
 
 1. Copier l’ID exact depuis `chrome://extensions`.
 2. Le placer dans `SAVEMARKS_ALLOWED_EXTENSION_IDS` dans `.env`.
-3. Redémarrer `pnpm dev`.
+3. Redémarrer `npm run dev`.
 4. Générer un nouveau code de pairing.
 
 Ne pas ajouter le préfixe `chrome-extension://` dans `.env` : SaveMarks le fait
@@ -62,7 +62,7 @@ depuis l’application web.
 
 ## L’extension ne reflète pas une modification
 
-`pnpm dev` reconstruit les fichiers mais Chrome ne recharge pas le service worker
+`npm run dev` reconstruit les fichiers mais Chrome ne recharge pas le service worker
 MV3. Dans `chrome://extensions`, cliquer **Recharger** sur SaveMarks puis
 rafraîchir l’onglet X ou Instagram.
 
@@ -80,12 +80,12 @@ pertinentes.
 
 ## Turbopack échoue avec `binding to a port` ou `EPERM`
 
-Le worker de build est bloqué par un sandbox. Lancer `pnpm build` depuis un
+Le worker de build est bloqué par un sandbox. Lancer `npm run build` depuis un
 terminal normal hors sandbox.
 
 ## Réinitialiser seulement la base locale
 
 Attention : cette opération supprime les données de développement PostgreSQL.
 Arrêter Compose, déplacer manuellement le dossier configuré par
-`POSTGRES_DATA_PATH`, puis relancer `pnpm setup`. Ne jamais supprimer un chemin
+`POSTGRES_DATA_PATH`, puis relancer `npm run setup`. Ne jamais supprimer un chemin
 non vérifié ou un volume Unraid de production.
