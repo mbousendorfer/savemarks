@@ -49,7 +49,7 @@ export async function queueStats() {
 export async function flushQueue(
   serverUrl: string,
   apiToken: string,
-): Promise<void> {
+): Promise<number> {
   const database = await db;
   const due = await database.getAllFromIndex(
     "queue",
@@ -93,4 +93,5 @@ export async function flushQueue(
       }
     }
   }
+  return due.length;
 }

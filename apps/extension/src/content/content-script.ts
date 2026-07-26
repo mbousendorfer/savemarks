@@ -17,7 +17,48 @@ async function refreshDiagnosticsState(): Promise<void> {
   sendDiagnosticsState(settings.diagnosticsEnabled);
 }
 
+async function resumeHistoricalImport(): Promise<void> {
+  if (window.location.pathname !== "/i/bookmarks") return;
+  const stored = await chrome.storage.local.get("xImportState");
+  const state = stored.xImportState as
+    | { status?: string; cursor?: string }
+    | undefined;
+  if (state?.status === "running" || state?.status === "waiting") {
+    window.postMessage(
+      {
+        channel: "SAVEMARKS_CONTROL",
+        type: "START_X_IMPORT",
+        cursor: state.cursor,
+      },
+      window.location.origin,
+    );
+  }
+}
+
 void refreshDiagnosticsState();
+
+chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  if (typeof message !== "object" || message === null || !("type" in message)) {
+    return;
+  }
+  if (message.type === "START_X_IMPORT") {
+    const cursor =
+      "cursor" in message && typeof message.cursor === "string"
+        ? message.cursor
+        : undefined;
+    window.postMessage(
+      { channel: "SAVEMARKS_CONTROL", type: "START_X_IMPORT", cursor },
+      window.location.origin,
+    );
+    sendResponse({ ok: true });
+  } else if (message.type === "CANCEL_X_IMPORT") {
+    window.postMessage(
+      { channel: "SAVEMARKS_CONTROL", type: "CANCEL_X_IMPORT" },
+      window.location.origin,
+    );
+    sendResponse({ ok: true });
+  }
+});
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.diagnosticsEnabled) {
@@ -44,6 +85,18 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
     message.type === "SAVEMARKS_BRIDGE_READY"
   ) {
     void refreshDiagnosticsState();
+    void resumeHistoricalImport();
+    return;
+  }
+
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    message.type === "SAVEMARKS_X_IMPORT_PROGRESS" &&
+    "payload" in message
+  ) {
+    void chrome.storage.local.set({ xImportState: message.payload });
     return;
   }
 

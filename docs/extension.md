@@ -47,6 +47,11 @@ Le popup affiche :
 - état actuel des adapters X et Instagram ;
 - bouton de retry manuel.
 
+Après avoir ouvert la page des bookmarks X, le statut X passe à **Active**. Dans
+Settings, **Import X history** récupère les pages anciennes avec un délai
+conservateur entre chaque requête. L’import peut être annulé puis repris depuis
+le dernier curseur. Il s’arrête immédiatement sur 401, 403 ou 429.
+
 ## Diagnostics
 
 Ils sont désactivés par défaut.

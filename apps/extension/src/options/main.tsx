@@ -3,6 +3,14 @@ import { createRoot } from "react-dom/client";
 import { getSettings, setSettings } from "../lib/settings";
 import "../ui.css";
 
+interface XImportState {
+  status: "running" | "paused" | "complete" | "error" | "waiting";
+  imported: number;
+  pages: number;
+  cursor?: string;
+  error?: string;
+}
+
 function serverOriginPattern(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") {
@@ -17,6 +25,7 @@ function Options() {
   const [paired, setPaired] = useState(false);
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
   const [syncInterval, setSyncInterval] = useState(15);
+  const [xImport, setXImport] = useState<XImportState>();
   const [message, setMessage] = useState<string>();
 
   useEffect(() => {
@@ -26,7 +35,71 @@ function Options() {
       setDiagnosticsEnabled(settings.diagnosticsEnabled);
       setSyncInterval(settings.syncIntervalMinutes);
     });
+    void chrome.storage.local.get("xImportState").then((stored) => {
+      setXImport(stored.xImportState as XImportState | undefined);
+    });
+    const listener = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string,
+    ) => {
+      if (area === "local" && changes.xImportState) {
+        setXImport(changes.xImportState.newValue as XImportState | undefined);
+      }
+    };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
   }, []);
+
+  async function xTabs(): Promise<chrome.tabs.Tab[]> {
+    const tabs = await chrome.tabs.query({
+      url: [
+        "https://x.com/i/bookmarks*",
+        "https://twitter.com/i/bookmarks*",
+      ],
+    });
+    return tabs.sort(
+      (left, right) => (right.lastAccessed ?? 0) - (left.lastAccessed ?? 0),
+    );
+  }
+
+  async function startXImport(): Promise<void> {
+    const tabs = await xTabs();
+    const tab = tabs.find((candidate) => candidate.id !== undefined);
+    if (!tab?.id) {
+      setMessage("Open your X bookmarks page first, then try again.");
+      return;
+    }
+    const cursor =
+      xImport?.status === "paused" || xImport?.status === "error"
+        ? xImport.cursor
+        : undefined;
+    await chrome.storage.local.set({
+      xImportState: {
+        status: "waiting",
+        imported: xImport?.imported ?? 0,
+        pages: xImport?.pages ?? 0,
+        ...(cursor ? { cursor } : {}),
+      },
+    });
+    await chrome.tabs.sendMessage(tab.id, {
+      type: "START_X_IMPORT",
+      cursor,
+    });
+    setMessage("Historical X import started.");
+  }
+
+  async function cancelXImport(): Promise<void> {
+    const tabs = await xTabs();
+    await Promise.all(
+      tabs
+        .filter((tab): tab is chrome.tabs.Tab & { id: number } => tab.id !== undefined)
+        .map((tab) =>
+          chrome.tabs
+            .sendMessage(tab.id, { type: "CANCEL_X_IMPORT" })
+            .catch(() => undefined),
+        ),
+    );
+  }
 
   async function pair(): Promise<void> {
     try {
@@ -103,6 +176,39 @@ function Options() {
 
       <section className="panel">
         <h2 style={{ marginTop: 0, fontSize: 18 }}>Synchronization</h2>
+        <div style={{ marginBottom: 22 }}>
+          <strong style={{ display: "block", marginBottom: 6 }}>
+            X bookmark history
+          </strong>
+          <p className="muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
+            {xImport
+              ? `${xImport.status} · ${xImport.imported} items · ${xImport.pages} pages`
+              : "Ready to import your older bookmarks page by page."}
+          </p>
+          {xImport?.error && (
+            <p style={{ color: "#9d2f24", fontSize: 13 }}>{xImport.error}</p>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="primary"
+              disabled={xImport?.status === "running"}
+              onClick={() => void startXImport()}
+            >
+              {xImport?.status === "paused" || xImport?.status === "error"
+                ? "Resume X import"
+                : "Import X history"}
+            </button>
+            {(xImport?.status === "running" ||
+              xImport?.status === "waiting") && (
+              <button
+                className="secondary"
+                onClick={() => void cancelXImport()}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
         <div className="field" style={{ marginBottom: 18 }}>
           <label htmlFor="interval">Interval in minutes</label>
           <input

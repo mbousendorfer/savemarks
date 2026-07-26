@@ -105,12 +105,14 @@ ensuite afficher **Connected** et **online**.
 - queue IndexedDB persistante et retry ;
 - diagnostics réseau opt-in sur X et Instagram ;
 - export de fixtures sanitisées ;
+- ingestion des pages de bookmarks X observées ;
+- import historique X paginé, annulable et reprenable depuis Settings ;
 - ingestion API de favoris déjà normalisés ;
 - schéma PostgreSQL et stockage média content-addressed.
 
-L’extraction réelle des favoris n’est pas encore activée : elle nécessite le
-protocole de test décrit dans [manual-testing.md](manual-testing.md). C’est
-volontaire afin de ne pas inventer d’endpoint privé.
+L’extraction X repose sur une requête observée et validée localement, sans
+identifiant GraphQL inventé. L’extraction Instagram nécessite encore le
+protocole de test décrit dans [manual-testing.md](manual-testing.md).
 
 ## 8. Arrêter et reprendre
 

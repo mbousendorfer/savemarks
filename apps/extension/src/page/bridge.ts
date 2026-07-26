@@ -2,6 +2,7 @@ import {
   cursorPaths,
   fieldPaths,
   inferMutation,
+  parseXBookmarksPage,
   sanitizeUrl,
   sourceForUrl,
 } from "@savemarks/extraction";
@@ -10,6 +11,12 @@ import { redactSecrets } from "@savemarks/shared/redaction";
 let diagnosticsEnabled = false;
 const nativeFetch = window.fetch.bind(window);
 const NativeXhr = window.XMLHttpRequest;
+let bookmarkPageFetcher: ((cursor: string) => Promise<Response>) | undefined;
+let latestBookmarkCursor: string | undefined;
+let pendingImportCursor: string | undefined;
+let pendingImportStart = false;
+let importRunning = false;
+let importCancelled = false;
 
 function post(message: unknown): void {
   window.postMessage(
@@ -50,6 +57,102 @@ function relevant(paths: string[], url: string, operation?: string): boolean {
   return /(bookmark|saved|save|cursor|page_info|next_max_id)/i.test(signal);
 }
 
+function importProgress(
+  status: "running" | "paused" | "complete" | "error" | "waiting",
+  imported: number,
+  pages: number,
+  cursor?: string,
+  error?: string,
+): void {
+  post({
+    type: "SAVEMARKS_X_IMPORT_PROGRESS",
+    version: 1,
+    payload: {
+      status,
+      imported,
+      pages,
+      ...(cursor ? { cursor } : {}),
+      ...(error ? { error } : {}),
+      updatedAt: new Date().toISOString(),
+    },
+  });
+}
+
+function urlWithCursor(value: string, cursor: string): URL {
+  const url = new URL(value);
+  const variables = JSON.parse(url.searchParams.get("variables") ?? "{}") as Record<
+    string,
+    unknown
+  >;
+  variables.cursor = cursor;
+  variables.count = 40;
+  url.searchParams.set("variables", JSON.stringify(variables));
+  return url;
+}
+
+async function startHistoricalImport(startCursor?: string): Promise<void> {
+  if (importRunning) return;
+  const firstCursor = startCursor ?? latestBookmarkCursor;
+  if (!bookmarkPageFetcher || !firstCursor) {
+    pendingImportStart = true;
+    pendingImportCursor = startCursor;
+    importProgress("waiting", 0, 0, startCursor);
+    return;
+  }
+
+  importRunning = true;
+  importCancelled = false;
+  let cursor: string | undefined = firstCursor;
+  let imported = 0;
+  let pages = 0;
+
+  try {
+    while (cursor && pages < 500 && !importCancelled) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+      const response = await bookmarkPageFetcher(cursor);
+      if ([401, 403, 429].includes(response.status)) {
+        throw new Error(`X stopped the import with HTTP ${response.status}`);
+      }
+      if (!response.ok) throw new Error(`X returned HTTP ${response.status}`);
+      const json = (await response.json()) as unknown;
+      const page = parseXBookmarksPage(json);
+      for (const bookmark of page.items) {
+        post({
+          type: "SAVEMARKS_DETECTED_BOOKMARK",
+          version: 1,
+          payload: bookmark,
+        });
+      }
+      imported += page.items.length;
+      pages += 1;
+      const nextCursor = page.cursor;
+      if (!nextCursor || nextCursor === cursor || page.items.length === 0) {
+        cursor = nextCursor;
+        break;
+      }
+      cursor = nextCursor;
+      importProgress("running", imported, pages, cursor);
+    }
+
+    importProgress(
+      importCancelled ? "paused" : "complete",
+      imported,
+      pages,
+      cursor,
+    );
+  } catch (error) {
+    importProgress(
+      "error",
+      imported,
+      pages,
+      cursor,
+      error instanceof Error ? error.message : "Historical import failed",
+    );
+  } finally {
+    importRunning = false;
+  }
+}
+
 async function inspect(
   transport: "fetch" | "xhr",
   urlValue: string,
@@ -58,12 +161,31 @@ async function inspect(
   status: number,
   response: unknown,
 ): Promise<void> {
-  if (!diagnosticsEnabled) return;
   const url = sanitizeUrl(urlValue);
   const source = url ? sourceForUrl(url) : null;
   if (!url || !source) return;
-  const responseShape = fieldPaths(response);
   const operation = operationName(body, urlValue);
+
+  if (source === "x" && operation === "Bookmarks" && status === 200) {
+    const page = parseXBookmarksPage(response);
+    latestBookmarkCursor = page.cursor;
+    for (const bookmark of page.items) {
+      post({
+        type: "SAVEMARKS_DETECTED_BOOKMARK",
+        version: 1,
+        payload: bookmark,
+      });
+    }
+    if (pendingImportStart) {
+      const requestedCursor = pendingImportCursor;
+      pendingImportStart = false;
+      pendingImportCursor = undefined;
+      void startHistoricalImport(requestedCursor);
+    }
+  }
+
+  if (!diagnosticsEnabled) return;
+  const responseShape = fieldPaths(response);
   if (!relevant(responseShape, url, operation)) return;
 
   post({
@@ -118,6 +240,28 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
     "enabled" in event.data
   ) {
     diagnosticsEnabled = event.data.enabled === true;
+  } else if (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "channel" in event.data &&
+    event.data.channel === "SAVEMARKS_CONTROL" &&
+    "type" in event.data &&
+    event.data.type === "START_X_IMPORT"
+  ) {
+    const cursor =
+      "cursor" in event.data && typeof event.data.cursor === "string"
+        ? event.data.cursor
+        : undefined;
+    void startHistoricalImport(cursor);
+  } else if (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "channel" in event.data &&
+    event.data.channel === "SAVEMARKS_CONTROL" &&
+    "type" in event.data &&
+    event.data.type === "CANCEL_X_IMPORT"
+  ) {
+    importCancelled = true;
   }
 });
 
@@ -128,13 +272,26 @@ post({
 
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const response = await nativeFetch(input, init);
-  if (diagnosticsEnabled) {
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
+  const operation = operationName(init?.body, url);
+  if (operation === "Bookmarks") {
+    try {
+      const template =
+        input instanceof Request
+          ? new Request(input, init)
+          : new Request(new URL(url, window.location.origin), init);
+      bookmarkPageFetcher = (cursor) =>
+        nativeFetch(new Request(urlWithCursor(template.url, cursor), template));
+    } catch {
+      bookmarkPageFetcher = undefined;
+    }
+  }
+  if (diagnosticsEnabled || operation === "Bookmarks") {
     const method = init?.method ?? (input instanceof Request ? input.method : "GET");
     const body = init?.body;
     void response
@@ -152,20 +309,46 @@ class SaveMarksXhr extends NativeXhr {
   private requestUrl = "";
   private requestMethod = "GET";
   private requestBody: unknown;
+  private requestHeaders = new Headers();
 
   override open(method: string, url: string | URL, ...rest: unknown[]): void {
     this.requestMethod = method;
     this.requestUrl = url.toString();
+    this.requestHeaders = new Headers();
     Reflect.apply(NativeXhr.prototype.open, this, [method, url, ...rest]);
+  }
+
+  override setRequestHeader(name: string, value: string): void {
+    this.requestHeaders.append(name, value);
+    super.setRequestHeader(name, value);
   }
 
   override send(body?: Document | XMLHttpRequestBodyInit | null): void {
     this.requestBody = body;
+    const operation = operationName(body, this.requestUrl);
+    if (operation === "Bookmarks") {
+      const url = new URL(this.requestUrl, window.location.origin).toString();
+      const method = this.requestMethod;
+      const headers = new Headers(this.requestHeaders);
+      const credentials: RequestCredentials = this.withCredentials
+        ? "include"
+        : "same-origin";
+      bookmarkPageFetcher = (cursor) =>
+        nativeFetch(urlWithCursor(url, cursor), {
+          method,
+          headers,
+          credentials,
+          ...(method.toUpperCase() === "GET" || body == null
+            ? {}
+            : { body: body as BodyInit }),
+        });
+    }
     this.addEventListener("load", () => {
-      if (!diagnosticsEnabled) return;
-      try {
-        const json = JSON.parse(this.responseText) as unknown;
-        void inspect(
+    try {
+      const json = JSON.parse(this.responseText) as unknown;
+      const operation = operationName(this.requestBody, this.requestUrl);
+      if (!diagnosticsEnabled && operation !== "Bookmarks") return;
+      void inspect(
           "xhr",
           this.requestUrl,
           this.requestMethod,

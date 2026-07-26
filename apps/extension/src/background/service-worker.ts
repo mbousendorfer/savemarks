@@ -5,6 +5,7 @@ import { getSettings, setSettings } from "../lib/settings";
 
 const SYNC_ALARM = "savemarks-sync";
 const MAX_DIAGNOSTIC_EVENTS = 250;
+let activeSynchronization: Promise<void> | undefined;
 
 async function configureAlarm(): Promise<void> {
   const settings = await getSettings();
@@ -16,11 +17,24 @@ async function configureAlarm(): Promise<void> {
   }
 }
 
-async function synchronize(): Promise<void> {
+async function synchronize(): Promise<number> {
   const settings = await getSettings();
-  if (!settings.syncEnabled || !settings.serverUrl || !settings.apiToken) return;
-  await flushQueue(settings.serverUrl, settings.apiToken);
+  if (!settings.syncEnabled || !settings.serverUrl || !settings.apiToken) return 0;
+  const processed = await flushQueue(settings.serverUrl, settings.apiToken);
   await setSettings({ lastSuccessfulSync: new Date().toISOString() });
+  return processed;
+}
+
+function scheduleSynchronization(): void {
+  if (activeSynchronization) return;
+  activeSynchronization = (async () => {
+    let processed: number;
+    do {
+      processed = await synchronize();
+    } while (processed === 25);
+  })().finally(() => {
+    activeSynchronization = undefined;
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -30,7 +44,7 @@ chrome.runtime.onStartup.addListener(() => {
   void configureAlarm();
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === SYNC_ALARM) void synchronize();
+  if (alarm.name === SYNC_ALARM) scheduleSynchronization();
 });
 chrome.storage.onChanged.addListener((_changes, area) => {
   if (area === "local") void configureAlarm();
@@ -49,7 +63,12 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
       );
       if (parsed.success) {
         await enqueue(parsed.data);
-        void synchronize();
+        await chrome.storage.local.set({
+          xAdapterActive: parsed.data.source === "x" || undefined,
+          instagramAdapterActive:
+            parsed.data.source === "instagram" || undefined,
+        });
+        scheduleSynchronization();
       }
       sendResponse({ ok: parsed.success });
       return;
@@ -87,7 +106,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
       return;
     }
     if (type === "SYNC_NOW") {
-      await synchronize();
+      scheduleSynchronization();
       sendResponse({ ok: true });
       return;
     }

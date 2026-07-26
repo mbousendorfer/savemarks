@@ -8,6 +8,8 @@ interface Status {
   server: "not configured" | "checking" | "online" | "offline";
   pending: number;
   failed: number;
+  xActive: boolean;
+  instagramActive: boolean;
   lastSuccessfulSync?: string;
 }
 
@@ -17,6 +19,8 @@ function Popup() {
     server: "not configured",
     pending: 0,
     failed: 0,
+    xActive: false,
+    instagramActive: false,
   });
 
   async function refresh(): Promise<void> {
@@ -24,11 +28,17 @@ function Popup() {
     const stats = (await chrome.runtime.sendMessage({
       type: "QUEUE_STATS",
     })) as { pending: number; failed: number };
+    const sourceStatus = await chrome.storage.local.get([
+      "xAdapterActive",
+      "instagramAdapterActive",
+    ]);
     const next: Status = {
       paired: Boolean(settings.apiToken),
       server: settings.serverUrl ? "checking" : "not configured",
       pending: stats.pending,
       failed: stats.failed,
+      xActive: sourceStatus.xAdapterActive === true,
+      instagramActive: sourceStatus.instagramAdapterActive === true,
       ...(settings.lastSuccessfulSync
         ? { lastSuccessfulSync: settings.lastSuccessfulSync }
         : {}),
@@ -78,9 +88,11 @@ function Popup() {
           <dt className="muted">Failed</dt>
           <dd>{status.failed}</dd>
           <dt className="muted">X</dt>
-          <dd>Awaiting live spike</dd>
+          <dd>{status.xActive ? "Active" : "Waiting for bookmarks page"}</dd>
           <dt className="muted">Instagram</dt>
-          <dd>Awaiting live spike</dd>
+          <dd>
+            {status.instagramActive ? "Active" : "Awaiting live spike"}
+          </dd>
         </dl>
         <div style={{ display: "flex", gap: 8 }}>
           <button

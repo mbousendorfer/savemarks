@@ -23,6 +23,11 @@ tokens, session identifiers, or complete request headers. Source credentials
 never leave the source tab. Debug capture stores field names rather than response
 values and recursively redacts sensitive request-body keys.
 
+The X historical importer reuses the browser's observed request headers only
+inside the page's in-memory bridge. Those headers are never posted across the
+extension message boundary, written to extension storage, logged, exported, or
+sent to the SaveMarks server.
+
 The pairing API returns a 256-bit random token once. The extension stores it in
 `chrome.storage.local`. PostgreSQL stores only a SHA-256 digest combined with a
 server-side pepper. Pairing codes use an unambiguous eight-character alphabet,
