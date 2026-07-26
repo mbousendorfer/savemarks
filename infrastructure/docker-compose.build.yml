@@ -1,0 +1,6 @@
+services:
+  web:
+    image: savemarks:local
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile

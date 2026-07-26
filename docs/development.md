@@ -18,16 +18,17 @@ Les commandes racine chargent automatiquement `.env` avec `dotenv-cli`.
 
 Variables principales :
 
-| Variable | Description |
-| --- | --- |
-| `DATABASE_URL` | Connexion PostgreSQL utilisée hors Docker |
-| `SAVEMARKS_TOKEN_PEPPER` | Secret serveur pour hasher codes et tokens |
-| `SAVEMARKS_ALLOWED_EXTENSION_IDS` | IDs Chrome autorisés, séparés par virgules |
-| `SAVEMARKS_DEV_ORIGINS` | Origines web CORS autorisées en développement |
-| `SAVEMARKS_PORT` | Port publié par Compose |
-| `POSTGRES_DATA_PATH` | Données PostgreSQL sur l’hôte |
-| `MEDIA_DATA_PATH` | Médias téléchargés sur l’hôte |
-| `BACKUP_DATA_PATH` | Destination des sauvegardes |
+| Variable                          | Description                                   |
+| --------------------------------- | --------------------------------------------- |
+| `DATABASE_URL`                    | Connexion PostgreSQL utilisée hors Docker     |
+| `SAVEMARKS_TOKEN_PEPPER`          | Secret serveur pour hasher codes et tokens    |
+| `SAVEMARKS_ALLOWED_EXTENSION_IDS` | IDs Chrome autorisés, séparés par virgules    |
+| `SAVEMARKS_DEV_ORIGINS`           | Origines web CORS autorisées en développement |
+| `SAVEMARKS_PORT`                  | Port publié par Compose                       |
+| `POSTGRES_DATA_PATH`              | Données PostgreSQL sur l’hôte                 |
+| `MEDIA_DATA_PATH`                 | Médias téléchargés sur l’hôte                 |
+| `BACKUP_DATA_PATH`                | Destination des sauvegardes                   |
+| `SAVEMARKS_DATA_PATH`             | Volume `/data` du déploiement Unraid          |
 
 Ne jamais committer `.env`.
 
@@ -41,6 +42,16 @@ npm run lint
 npm run test
 npm run fixtures:check
 npm run check
+```
+
+Construire localement la même image que celle publiée par GitHub :
+
+```bash
+docker compose \
+  --env-file .env.unraid \
+  -f infrastructure/docker-compose.yml \
+  -f infrastructure/docker-compose.build.yml \
+  build web
 ```
 
 Base de données :

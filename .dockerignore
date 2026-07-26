@@ -10,6 +10,7 @@ build
 **/build
 .turbo
 .data
+**/.data
 .env
 .env.local
 .env.unraid

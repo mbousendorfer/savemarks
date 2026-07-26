@@ -35,17 +35,31 @@ ont été synchronisés par l’extension.
 Le guide complet, captures comprises, est dans
 [docs/getting-started.md](docs/getting-started.md).
 
+## Déploiement Docker / Unraid
+
+Chaque push sur `main` génère automatiquement une image Docker multi-architecture
+sur GitHub Container Registry :
+
+```text
+ghcr.io/mbousendorfer/savemarks:latest
+```
+
+Le Compose fourni utilise cette image, PostgreSQL et un dossier hôte `/data`
+contenant tous les médias et exports. Le serveur Unraid n’a donc besoin ni du
+code source ni de Node.js. Voir le
+[guide Unraid pas à pas](docs/unraid.md).
+
 ## Commandes utiles
 
-| Commande | Effet |
-| --- | --- |
-| `npm run setup` | Prépare un environnement local neuf |
-| `npm run dev` | Lance le web et reconstruit l’extension à chaque changement |
-| `npm run extension:build` | Construit uniquement l’extension |
-| `npm run infra:up` | Démarre PostgreSQL |
-| `npm run infra:down` | Arrête PostgreSQL sans supprimer les données |
-| `npm run db:migrate` | Applique les migrations existantes |
-| `npm run check` | Typecheck, lint, tests, scan des fixtures et build |
+| Commande                  | Effet                                                       |
+| ------------------------- | ----------------------------------------------------------- |
+| `npm run setup`           | Prépare un environnement local neuf                         |
+| `npm run dev`             | Lance le web et reconstruit l’extension à chaque changement |
+| `npm run extension:build` | Construit uniquement l’extension                            |
+| `npm run infra:up`        | Démarre PostgreSQL                                          |
+| `npm run infra:down`      | Arrête PostgreSQL sans supprimer les données                |
+| `npm run db:migrate`      | Applique les migrations existantes                          |
+| `npm run check`           | Typecheck, lint, tests, scan des fixtures et build          |
 
 ## Documentation
 

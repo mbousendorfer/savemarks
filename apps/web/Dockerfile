@@ -22,13 +22,13 @@ RUN npx --no-install esbuild packages/database/src/migrate.ts \
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs
-COPY --from=build --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=build --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=nextjs:nodejs /app/migrate.mjs ./migrate.mjs
-COPY --from=build --chown=nextjs:nodejs /app/packages/database/drizzle ./drizzle
-USER nextjs
+RUN apk add --no-cache su-exec
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/migrate.mjs ./migrate.mjs
+COPY --from=build /app/packages/database/drizzle ./drizzle
+COPY infrastructure/docker-entrypoint.sh /usr/local/bin/savemarks-entrypoint
 EXPOSE 3210
 ENV PORT=3210
-CMD ["sh", "-c", "node /app/migrate.mjs && node apps/web/server.js"]
+ENV HOSTNAME=0.0.0.0
+ENTRYPOINT ["savemarks-entrypoint"]
