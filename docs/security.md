@@ -30,8 +30,11 @@ expire after five minutes, and are single-use.
 
 ## CORS and local network
 
-API CORS responses are emitted only for extension IDs and development origins
-configured by the operator. Pairing fails for an unlisted browser origin.
+In production, API CORS responses are emitted only for extension IDs and origins
+configured by the operator. In local development only, when no extension ID is
+configured, SaveMarks accepts syntactically valid Chrome extension origins to
+keep first-run setup simple. Pairing still requires a short-lived, single-use
+code. Pairing fails for every other unlisted browser origin.
 Running over plain HTTP is acceptable only on a trusted private network; use a
 Tailscale HTTPS hostname when the local network is not trusted.
 

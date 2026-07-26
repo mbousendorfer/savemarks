@@ -59,9 +59,15 @@ Puis vérifier `DATABASE_URL` dans `.env`.
 
 ## Le pairing répond « Origin not allowed »
 
+En développement local, laisser `SAVEMARKS_ALLOWED_EXTENSION_IDS` vide puis
+redémarrer `npm run dev`. Une extension Chrome valide sera acceptée
+automatiquement.
+
+En production :
+
 1. Copier l’ID exact depuis `chrome://extensions`.
 2. Le placer dans `SAVEMARKS_ALLOWED_EXTENSION_IDS` dans `.env`.
-3. Redémarrer `npm run dev`.
+3. Redémarrer le serveur.
 4. Générer un nouveau code de pairing.
 
 Ne pas ajouter le préfixe `chrome-extension://` dans `.env` : SaveMarks le fait

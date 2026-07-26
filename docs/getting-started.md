@@ -61,15 +61,12 @@ Elle ne remplace jamais un `.env` existant.
 2. Activer **Mode développeur**.
 3. Cliquer **Charger l’extension non empaquetée**.
 4. Choisir le dossier absolu `apps/extension/build`.
-5. Copier l’**ID** affiché sur la carte SaveMarks.
+5. En développement local, aucune autre configuration n’est nécessaire.
 
-Dans `.env`, compléter :
-
-```dotenv
-SAVEMARKS_ALLOWED_EXTENSION_IDS=abcdefghijklmnopabcdefghijklmnop
-```
-
-Plusieurs installations peuvent être séparées par des virgules.
+SaveMarks accepte automatiquement une extension Chrome valide lorsque
+`SAVEMARKS_ALLOWED_EXTENSION_IDS` est vide et que le serveur tourne en mode
+développement. En production, l’ID affiché sur la carte SaveMarks doit
+obligatoirement être ajouté à cette variable.
 
 ## 5. Lancer les applications
 

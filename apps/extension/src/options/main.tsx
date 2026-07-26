@@ -12,7 +12,7 @@ function serverOriginPattern(value: string): string {
 }
 
 function Options() {
-  const [serverUrl, setServerUrl] = useState("http://scarif.local:3210");
+  const [serverUrl, setServerUrl] = useState("http://localhost:3210");
   const [pairingCode, setPairingCode] = useState("");
   const [paired, setPaired] = useState(false);
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
@@ -70,7 +70,7 @@ function Options() {
     <main style={{ maxWidth: 680, margin: "48px auto", padding: "0 20px" }}>
       <h1 style={{ fontSize: 28, marginBottom: 8 }}>SaveMarks settings</h1>
       <p className="muted" style={{ marginTop: 0, marginBottom: 28 }}>
-        Configure the local Scarif server and the extraction spike.
+        Configure the local SaveMarks server and the extraction spike.
       </p>
 
       <section className="panel" style={{ marginBottom: 18 }}>
