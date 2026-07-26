@@ -1,6 +1,24 @@
 # Dépannage
 
-## `npm run setup` dit que Docker est indisponible
+## `unknown flag: --env-file` ou `docker compose` est inconnu
+
+Le paquet Homebrew `docker` seul installe uniquement le client. SaveMarks a
+besoin du moteur Docker et de Compose.
+
+Sur macOS :
+
+```bash
+brew install --cask orbstack
+open -a OrbStack
+```
+
+Attendre qu’OrbStack soit prêt, puis :
+
+```bash
+npm run setup
+```
+
+## `npm run setup` dit que le moteur Docker est indisponible
 
 Vérifier que Docker Desktop, OrbStack ou le daemon Docker est démarré :
 
@@ -9,7 +27,9 @@ docker info
 docker compose version
 ```
 
-Puis relancer `npm run setup`.
+Si `docker compose version` fonctionne mais pas `docker info`, ouvrir OrbStack
+ou Docker Desktop et attendre le démarrage du moteur. Puis relancer
+`npm run setup`.
 
 ## Le port 5432 est déjà utilisé
 

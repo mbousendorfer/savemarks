@@ -11,12 +11,24 @@ Il faut :
 - Docker Desktop, OrbStack ou un moteur Docker compatible Compose v2 ;
 - Chrome, Chromium, Brave ou Edge.
 
+Sur macOS, l’installation la plus courte est :
+
+```bash
+brew install --cask orbstack
+open -a OrbStack
+```
+
+Attendre qu’OrbStack soit prêt avant de continuer. Installer uniquement le
+paquet Homebrew `docker` ne suffit pas : il fournit le client en ligne de
+commande, mais pas le moteur ni Docker Compose.
+
 Vérification :
 
 ```bash
 node --version
 npm --version
 docker compose version
+docker info
 ```
 
 ## 2. Récupérer le projet
