@@ -32,6 +32,9 @@ Il reste ensuite deux actions manuelles :
 La page d’accueil est la bibliothèque : les bookmarks apparaissent dès qu’ils
 ont été synchronisés par l’extension.
 
+Les médias et les données PostgreSQL locales sont conservés dans le dossier
+visible `data/` à la racine du projet. Ce dossier est exclu de Git.
+
 Le guide complet, captures comprises, est dans
 [docs/getting-started.md](docs/getting-started.md).
 

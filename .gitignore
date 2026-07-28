@@ -9,7 +9,7 @@ npm-debug.log*
 .env
 .env.local
 .env.unraid
-.data
+/data
 *.log
 apps/extension/build
 apps/web/next-env.d.ts

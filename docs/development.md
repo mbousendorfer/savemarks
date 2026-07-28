@@ -9,6 +9,7 @@ packages/shared          modèles Zod et utilitaires communs
 packages/extraction      diagnostics et adapters de sources
 packages/database        schéma Drizzle, migrations et stockage média
 infrastructure           Docker Compose local et Unraid
+data                     PostgreSQL, médias et sauvegardes locales (hors Git)
 docs                     documentation opérateur et technique
 ```
 

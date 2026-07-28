@@ -9,8 +9,7 @@ dist
 build
 **/build
 .turbo
-.data
-**/.data
+/data
 .env
 .env.local
 .env.unraid

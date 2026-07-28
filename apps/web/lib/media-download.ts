@@ -7,7 +7,7 @@ import {
 } from "@savemarks/database";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, resolve } from "node:path";
+import { dirname, extname, isAbsolute, normalize } from "node:path";
 
 const MIME_EXTENSIONS: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -37,10 +37,9 @@ export interface MediaSyncResult {
 
 export function mediaRoot(): string {
   const configured = process.env.MEDIA_DATA_PATH;
-  if (!configured) return resolve(process.cwd(), "../../.data/media");
-  return isAbsolute(configured)
-    ? configured
-    : resolve(process.cwd(), "../..", configured);
+  if (!configured) return "/data/media";
+  if (isAbsolute(configured)) return normalize(configured);
+  return normalize(`${process.cwd()}/../../${configured}`);
 }
 
 function allowedHost(source: PendingMedia["source"], hostname: string): boolean {

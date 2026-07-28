@@ -115,7 +115,7 @@ fiche, permet d’ajouter ou retirer des tags et donne le lien vers la publicati
 originale.
 
 Les médias synchronisés sont téléchargés automatiquement sous
-`.data/media/x/media/pictures` et `.data/media/x/media/videos`. En Docker, ces
+`data/media/x/media/pictures` et `data/media/x/media/videos`. En Docker, ces
 dossiers se trouvent sous le volume configuré par `MEDIA_DATA_PATH`.
 
 ## 8. Ce qui fonctionne à ce stade
