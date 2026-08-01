@@ -1106,6 +1106,149 @@ a {
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ink: #f1f0e8;
+    --paper: #11130f;
+    --card: #1a1d18;
+    --muted: #9b9e95;
+    --line: rgba(241, 240, 232, 0.14);
+  }
+
+  html {
+    scrollbar-color: #454a40 var(--paper);
+  }
+
+  body {
+    background:
+      radial-gradient(
+        circle at 74% 0%,
+        rgba(223, 255, 87, 0.055),
+        transparent 31rem
+      ),
+      var(--paper);
+  }
+
+  .sidebar {
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    background: #0c0e0b;
+  }
+
+  .search,
+  .view-toggle,
+  .load-more button {
+    background: rgba(29, 32, 27, 0.82);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+  }
+
+  .search input::placeholder {
+    color: #6f736a;
+  }
+
+  .view-toggle button,
+  .control-group,
+  .control-group label,
+  .clear-filters,
+  .load-more button,
+  .load-more span,
+  .eyebrow,
+  .card-author div span,
+  .card-footer,
+  .empty-state,
+  .detail-kicker,
+  .detail-handle,
+  .detail-meta dt,
+  .pairing-dialog > p:not(.eyebrow, .dialog-error) {
+    color: var(--muted);
+  }
+
+  .view-toggle button.active,
+  .clear-filters:hover,
+  .tag-input button,
+  .original-link,
+  .button-dark {
+    background: var(--acid);
+    color: #11130f;
+  }
+
+  .control-group label:hover,
+  .control-group label:focus-within,
+  .control-group label {
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .control-group select option {
+    background: #1a1d18;
+    color: var(--ink);
+  }
+
+  .bookmark-card {
+    border-color: rgba(241, 240, 232, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .bookmark-card:hover,
+  .bookmark-card:focus-visible {
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.38);
+  }
+
+  .bookmark-card--text {
+    background: #22251e;
+  }
+
+  .bookmark-card--text:nth-child(3n) {
+    background: #1d251c;
+  }
+
+  .card-media,
+  .detail-media {
+    background: #0b0d0a;
+  }
+
+  .avatar {
+    background: #353931;
+  }
+
+  .source-mark {
+    background: #30342d;
+  }
+
+  .card-tags span,
+  .tag-list button {
+    background: rgba(223, 255, 87, 0.14);
+    color: #dfff57;
+  }
+
+  .card-footer {
+    border-top-color: rgba(241, 240, 232, 0.1);
+  }
+
+  .detail-backdrop {
+    background: rgba(4, 5, 4, 0.8);
+  }
+
+  .detail-panel,
+  .pairing-dialog {
+    background: #191c17;
+    box-shadow: 0 32px 110px rgba(0, 0, 0, 0.64);
+  }
+
+  .tag-input,
+  .pairing-code {
+    background: #10120f;
+  }
+
+  .archive-button:hover {
+    background: #292d26;
+  }
+
+  .tag-error,
+  .dialog-error {
+    color: #ff8c7d;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
