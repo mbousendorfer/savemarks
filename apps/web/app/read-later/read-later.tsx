@@ -122,6 +122,11 @@ function validHttpUrl(value: string) {
   }
 }
 
+function enrichmentLabel(status: ReadLaterItem["enrichmentStatus"]): string {
+  if (status === "failed") return "preview unavailable";
+  return "fetching preview";
+}
+
 function ThemeButton() {
   const [theme, setTheme] = useState<Theme>("light");
   useEffect(() => {
@@ -687,6 +692,23 @@ export function ReadLater() {
     }
   }
 
+  async function retryEnrichment(id: string) {
+    try {
+      await fetchJson(
+        `/api/read-later/${id}/retry`,
+        { method: "POST" },
+        "The preview could not be retried.",
+      );
+      await load(false);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "The preview could not be retried.",
+      );
+    }
+  }
+
   return (
     <main className="app-shell rl-shell">
       <aside className="sidebar rl-sidebar">
@@ -881,8 +903,13 @@ export function ReadLater() {
                     }).format(new Date(item.savedAt))}
                   </time>
                   {item.enrichmentStatus !== "complete" && (
-                    <em className={`rl-state ${item.enrichmentStatus}`}>
-                      {item.enrichmentStatus}
+                    <em
+                      className={`rl-state ${item.enrichmentStatus}`}
+                      title={
+                        item.lastError ?? enrichmentLabel(item.enrichmentStatus)
+                      }
+                    >
+                      {enrichmentLabel(item.enrichmentStatus)}
                     </em>
                   )}
                 </div>
@@ -945,12 +972,8 @@ export function ReadLater() {
                 </button>
                 {item.enrichmentStatus === "failed" && (
                   <button
-                    onClick={() =>
-                      void fetch(`/api/read-later/${item.id}/retry`, {
-                        method: "POST",
-                      }).then(() => load(false))
-                    }
-                    title="Retry enrichment"
+                    onClick={() => void retryEnrichment(item.id)}
+                    title="Retry preview"
                   >
                     <ArrowClockwiseIcon size={18} />
                   </button>

@@ -17,6 +17,18 @@ export interface PublicFetchResult {
   finalUrl: string;
 }
 
+interface ResolvedAddress {
+  address: string;
+  family: number;
+}
+
+export function pinnedLookupResult(
+  pinned: ResolvedAddress,
+  all: boolean,
+): ResolvedAddress | ResolvedAddress[] {
+  return all ? [pinned] : pinned;
+}
+
 export function isPublicAddress(address: string): boolean {
   try {
     let parsed = ipaddr.parse(address);
@@ -36,7 +48,10 @@ async function resolvePublic(hostname: string) {
     return [{ address: hostname, family: isIP(hostname) as 4 | 6 }];
   }
   const addresses = await lookup(hostname, { all: true, verbatim: true });
-  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
+  if (
+    addresses.length === 0 ||
+    addresses.some(({ address }) => !isPublicAddress(address))
+  ) {
     throw new Error("Private or unresolved host blocked");
   }
   return addresses;
@@ -47,7 +62,8 @@ function validateUrl(value: string): URL {
   if (!["http:", "https:"].includes(url.protocol)) {
     throw new Error("Only HTTP(S) URLs are supported");
   }
-  if (url.username || url.password) throw new Error("URL credentials are blocked");
+  if (url.username || url.password)
+    throw new Error("URL credentials are blocked");
   return url;
 }
 
@@ -89,8 +105,23 @@ export async function fetchPublicResource(
     const pinned = addresses[0]!;
     const dispatcher = new Agent({
       connect: {
-        lookup(_hostname, _options, callback) {
-          callback(null, pinned.address, pinned.family);
+        lookup(_hostname, lookupOptions, callback) {
+          if (
+            typeof lookupOptions === "object" &&
+            "all" in lookupOptions &&
+            lookupOptions.all
+          ) {
+            callback(
+              null,
+              pinnedLookupResult(pinned, true) as ResolvedAddress[],
+            );
+          } else {
+            const resolved = pinnedLookupResult(
+              pinned,
+              false,
+            ) as ResolvedAddress;
+            callback(null, resolved.address, resolved.family);
+          }
         },
       },
     });
@@ -110,16 +141,22 @@ export async function fetchPublicResource(
         url = validateUrl(new URL(location, url).toString());
         continue;
       }
-      if (!response.ok) throw new Error(`Remote server returned HTTP ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Remote server returned HTTP ${response.status}`);
       const contentType = (response.headers.get("content-type") ?? "")
         .split(";")[0]!
         .trim()
         .toLowerCase();
       if (!options.acceptedTypes.some((type) => contentType === type)) {
-        throw new Error(`Unsupported remote content type: ${contentType || "unknown"}`);
+        throw new Error(
+          `Unsupported remote content type: ${contentType || "unknown"}`,
+        );
       }
       return {
-        bytes: await readLimited(response as unknown as Response, options.maxBytes),
+        bytes: await readLimited(
+          response as unknown as Response,
+          options.maxBytes,
+        ),
         contentType,
         finalUrl: url.toString(),
       };

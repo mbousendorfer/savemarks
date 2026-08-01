@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPublicAddress } from "./public-fetch";
+import { isPublicAddress, pinnedLookupResult } from "./public-fetch";
 
 describe("public fetch address policy", () => {
   it.each([
@@ -22,4 +22,16 @@ describe("public fetch address policy", () => {
       expect(isPublicAddress(address)).toBe(true);
     },
   );
+});
+
+describe("pinned DNS lookup", () => {
+  const pinned = { address: "203.0.113.10", family: 4 as const };
+
+  it("returns the address list expected by Node when all results are requested", () => {
+    expect(pinnedLookupResult(pinned, true)).toEqual([pinned]);
+  });
+
+  it("returns one address for the legacy lookup callback", () => {
+    expect(pinnedLookupResult(pinned, false)).toEqual(pinned);
+  });
 });
