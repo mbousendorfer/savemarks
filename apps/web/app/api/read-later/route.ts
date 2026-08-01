@@ -136,11 +136,18 @@ export async function GET(request: Request) {
     );
   }
   if (tag) {
-    conditions.push(sql`exists (
-      select 1 from ${bookmarkTags} bt
-      inner join ${tags} t on t.id = bt.tag_id
-      where bt.bookmark_id = ${bookmarks.id} and t.name = ${tag.toLocaleLowerCase()}
-    )`);
+    conditions.push(
+      tag === "__untagged__"
+        ? sql`not exists (
+            select 1 from ${bookmarkTags} bt
+            where bt.bookmark_id = ${bookmarks.id}
+          )`
+        : sql`exists (
+            select 1 from ${bookmarkTags} bt
+            inner join ${tags} t on t.id = bt.tag_id
+            where bt.bookmark_id = ${bookmarks.id} and t.name = ${tag.toLocaleLowerCase()}
+          )`,
+    );
   }
 
   const rows = await database()
@@ -198,16 +205,41 @@ export async function GET(request: Request) {
     if (!mediaById.has(row.bookmarkId)) mediaById.set(row.bookmarkId, row.id);
   }
   const last = page.at(-1);
-  const [unread] = await database()
-    .select({ value: count() })
-    .from(bookmarks)
-    .where(
-      and(
-        eq(bookmarks.source, "web"),
-        eq(bookmarks.archived, false),
-        isNull(bookmarks.readAt),
+  const [unreadRows, tagFacets, untaggedRows] = await Promise.all([
+    database()
+      .select({ value: count() })
+      .from(bookmarks)
+      .where(
+        and(
+          eq(bookmarks.source, "web"),
+          eq(bookmarks.archived, false),
+          isNull(bookmarks.readAt),
+        ),
       ),
-    );
+    database()
+      .select({ name: tags.name, count: count(bookmarkTags.bookmarkId) })
+      .from(tags)
+      .innerJoin(bookmarkTags, eq(bookmarkTags.tagId, tags.id))
+      .innerJoin(bookmarks, eq(bookmarks.id, bookmarkTags.bookmarkId))
+      .where(and(eq(bookmarks.source, "web"), eq(bookmarks.archived, false)))
+      .groupBy(tags.name)
+      .orderBy(asc(tags.name)),
+    database()
+      .select({ value: count() })
+      .from(bookmarks)
+      .where(
+        and(
+          eq(bookmarks.source, "web"),
+          eq(bookmarks.archived, false),
+          sql`not exists (
+            select 1 from ${bookmarkTags} bt
+            where bt.bookmark_id = ${bookmarks.id}
+          )`,
+        ),
+      ),
+  ]);
+  const unread = unreadRows[0];
+  const untagged = untaggedRows[0];
   return Response.json({
     items: page.map((item) => ({
       ...item,
@@ -225,5 +257,7 @@ export async function GET(request: Request) {
           )
         : null,
     unreadCount: unread?.value ?? 0,
+    untaggedCount: untagged?.value ?? 0,
+    tagFacets,
   });
 }

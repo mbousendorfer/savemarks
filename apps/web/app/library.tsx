@@ -8,8 +8,11 @@ import {
   CopyIcon,
   CalendarBlankIcon,
   CaretDownIcon,
+  ArticleIcon,
+  FolderSimpleIcon,
   FunnelSimpleIcon,
   GridFourIcon,
+  HashIcon,
   ImageIcon,
   InstagramLogoIcon,
   LinkIcon,
@@ -31,6 +34,7 @@ import { MobileDock } from "./mobile-dock";
 
 const INITIAL_RENDER_COUNT = 48;
 const RENDER_BATCH_SIZE = 48;
+const UNTAGGED_FILTER = "__untagged__";
 
 type Source = "x" | "instagram";
 type ContentType =
@@ -169,6 +173,14 @@ function primaryMedia(bookmark: LibraryBookmark): LibraryMedia | undefined {
     );
   }
   return sorted.find((media) => !media.mimeType?.startsWith("video/"));
+}
+
+function bookmarkHost(canonicalUrl: string): string {
+  try {
+    return new URL(canonicalUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return canonicalUrl;
+  }
 }
 
 function matchesFilter(bookmark: LibraryBookmark, filter: Filter): boolean {
@@ -348,79 +360,144 @@ function BookmarkCard({
           <button disabled={!quickTag.trim() || busy}>Add</button>
         </form>
       )}
-      {media && (
-        <div
-          className="card-media"
-          style={
-            media.width && media.height
-              ? { aspectRatio: `${media.width}/${media.height}` }
-              : undefined
-          }
-        >
-          {/* Remote media remains the fallback until the local downloader stores it. */}
-          <img
-            src={media.url}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            fetchPriority="low"
-            referrerPolicy="no-referrer"
-          />
-          {(bookmark.contentType === "video" ||
-            bookmark.contentType === "reel") && (
-            <span className="media-type">
-              <VideoCameraIcon size={14} weight="fill" />
-              Video
-            </span>
+      {view === "list" ? (
+        <>
+          <div className="card-list-thumbnail">
+            {media ? (
+              <img
+                src={media.url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                referrerPolicy="no-referrer"
+              />
+            ) : bookmark.author.avatarUrl ? (
+              <Avatar
+                url={bookmark.author.avatarUrl}
+                username={bookmark.author.username}
+              />
+            ) : (
+              <span className="card-list-thumbnail-fallback" aria-hidden="true">
+                <SourceMark source={bookmark.source} />
+              </span>
+            )}
+          </div>
+          <div className="card-list-content">
+            <p className="card-list-title">
+              {copy?.trim() ||
+                bookmark.author.displayName ||
+                `@${bookmark.author.username}`}
+            </p>
+            {bookmark.tags.length > 0 && (
+              <div className="card-list-tags" aria-label="Tags">
+                {bookmark.tags.slice(0, 3).map((tag) => (
+                  <span key={tag}>#{tag}</span>
+                ))}
+              </div>
+            )}
+            <div className="card-list-meta">
+              <span>
+                <FolderSimpleIcon size={18} />
+                {bookmark.author.displayName ?? `@${bookmark.author.username}`}
+              </span>
+              <i aria-hidden="true" />
+              <span>
+                <ArticleIcon size={16} weight="fill" />
+                {bookmarkHost(bookmark.canonicalUrl)}
+              </span>
+              <i aria-hidden="true" />
+              <time
+                dateTime={
+                  sort.startsWith("published")
+                    ? (bookmark.publishedAt ?? bookmark.importedAt)
+                    : (bookmark.savedAt ?? bookmark.importedAt)
+                }
+                title={`${date.label}: ${date.value}`}
+              >
+                {date.value}
+              </time>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {media && (
+            <div
+              className="card-media"
+              style={
+                media.width && media.height
+                  ? { aspectRatio: `${media.width}/${media.height}` }
+                  : undefined
+              }
+            >
+              {/* Remote media remains the fallback until the local downloader stores it. */}
+              <img
+                src={media.url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                referrerPolicy="no-referrer"
+              />
+              {(bookmark.contentType === "video" ||
+                bookmark.contentType === "reel") && (
+                <span className="media-type">
+                  <VideoCameraIcon size={14} weight="fill" />
+                  Video
+                </span>
+              )}
+              {bookmark.contentType === "carousel" && (
+                <span className="media-type">
+                  <GridFourIcon size={14} weight="fill" />
+                  {bookmark.media.length}
+                </span>
+              )}
+            </div>
           )}
-          {bookmark.contentType === "carousel" && (
-            <span className="media-type">
-              <GridFourIcon size={14} weight="fill" />
-              {bookmark.media.length}
-            </span>
-          )}
-        </div>
+          <div className="card-body">
+            <div className="card-author">
+              <Avatar
+                url={bookmark.author.avatarUrl}
+                username={bookmark.author.username}
+              />
+              <div>
+                <strong>
+                  {bookmark.author.displayName ??
+                    `@${bookmark.author.username}`}
+                </strong>
+                <span>@{bookmark.author.username}</span>
+              </div>
+              <span
+                className="source-mark"
+                data-source={bookmark.source}
+                aria-label={bookmark.source === "x" ? "X" : "Instagram"}
+                title={bookmark.source === "x" ? "X" : "Instagram"}
+              >
+                <SourceMark source={bookmark.source} />
+              </span>
+            </div>
+            {copy && <p className="card-copy">{copy}</p>}
+            {bookmark.tags.length > 0 && (
+              <div className="card-tags">
+                {bookmark.tags.slice(0, 4).map((tag) => (
+                  <span key={tag}>#{tag}</span>
+                ))}
+              </div>
+            )}
+            <div className="card-footer">
+              <span>
+                {date.label} · {date.value}
+              </span>
+              <span className="card-origin">
+                <span>{bookmark.source === "x" ? "X" : "Instagram"}</span>
+                <i aria-hidden="true" />
+                {bookmark.contentType}
+              </span>
+            </div>
+          </div>
+        </>
       )}
-      <div className="card-body">
-        <div className="card-author">
-          <Avatar
-            url={bookmark.author.avatarUrl}
-            username={bookmark.author.username}
-          />
-          <div>
-            <strong>
-              {bookmark.author.displayName ?? `@${bookmark.author.username}`}
-            </strong>
-            <span>@{bookmark.author.username}</span>
-          </div>
-          <span
-            className="source-mark"
-            data-source={bookmark.source}
-            aria-label={bookmark.source === "x" ? "X" : "Instagram"}
-            title={bookmark.source === "x" ? "X" : "Instagram"}
-          >
-            <SourceMark source={bookmark.source} />
-          </span>
-        </div>
-        {copy && <p className="card-copy">{copy}</p>}
-        {bookmark.tags.length > 0 && (
-          <div className="card-tags">
-            {bookmark.tags.slice(0, 4).map((tag) => (
-              <span key={tag}>#{tag}</span>
-            ))}
-          </div>
-        )}
-        <div className="card-footer">
-          <span>
-            {date.label} · {date.value}
-          </span>
-          <span className="card-origin">
-            <span>{bookmark.source === "x" ? "X" : "Instagram"}</span>
-            <i aria-hidden="true" />
-            {bookmark.contentType}
-          </span>
-        </div>
-      </div>
     </article>
   );
 }
@@ -957,8 +1034,27 @@ export function Library({
     }
   }
 
+  const tagFacets = useMemo(() => {
+    const facets = new Map<string, number>();
+    for (const bookmark of bookmarks) {
+      if (bookmark.archived) continue;
+      for (const value of bookmark.tags) {
+        facets.set(value, (facets.get(value) ?? 0) + 1);
+      }
+    }
+    return [...facets.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }, [bookmarks]);
   const allTags = useMemo(
-    () => [...new Set(bookmarks.flatMap((bookmark) => bookmark.tags))].sort(),
+    () => tagFacets.map((facet) => facet.name),
+    [tagFacets],
+  );
+  const untaggedCount = useMemo(
+    () =>
+      bookmarks.filter(
+        (bookmark) => !bookmark.archived && bookmark.tags.length === 0,
+      ).length,
     [bookmarks],
   );
 
@@ -975,7 +1071,13 @@ export function Library({
       : undefined;
     const filtered = bookmarks.filter((bookmark) => {
       if (!matchesFilter(bookmark, filter)) return false;
-      if (tag !== "all" && !bookmark.tags.includes(tag)) return false;
+      if (tag === UNTAGGED_FILTER && bookmark.tags.length > 0) return false;
+      if (
+        tag !== "all" &&
+        tag !== UNTAGGED_FILTER &&
+        !bookmark.tags.includes(tag)
+      )
+        return false;
       if (cutoff && savedTime(bookmark) < cutoff) return false;
       if (!needle) return true;
       return [
@@ -1168,6 +1270,52 @@ export function Library({
               </button>
             ))}
           </div>
+          <div className="sidebar-section">
+            <p>Filters</p>
+            <button
+              className={tag === UNTAGGED_FILTER ? "active" : ""}
+              onClick={() =>
+                setTag((current) =>
+                  current === UNTAGGED_FILTER ? "all" : UNTAGGED_FILTER,
+                )
+              }
+              aria-pressed={tag === UNTAGGED_FILTER}
+              aria-label="Bookmarks without tags"
+              title="Bookmarks without tags"
+            >
+              <HashIcon size={16} />
+              <span>Without tags</span>
+              <em>{untaggedCount}</em>
+            </button>
+          </div>
+          <div className="sidebar-section sidebar-tags">
+            <p className="sidebar-section-title">
+              <span>Tags</span>
+              <em>{tagFacets.length}</em>
+            </p>
+            {tagFacets.length > 0 ? (
+              tagFacets.map((facet) => (
+                <button
+                  key={facet.name}
+                  className={tag === facet.name ? "active" : ""}
+                  onClick={() =>
+                    setTag((current) =>
+                      current === facet.name ? "all" : facet.name,
+                    )
+                  }
+                  aria-pressed={tag === facet.name}
+                  aria-label={`Filter by tag ${facet.name}`}
+                  title={`#${facet.name}`}
+                >
+                  <HashIcon size={15} />
+                  <span>{facet.name}</span>
+                  <em>{facet.count}</em>
+                </button>
+              ))
+            ) : (
+              <span className="sidebar-empty">No tags yet</span>
+            )}
+          </div>
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-note">
@@ -1349,6 +1497,7 @@ export function Library({
                 onChange={(event) => setTag(event.target.value)}
               >
                 <option value="all">All tags</option>
+                <option value={UNTAGGED_FILTER}>Without tags</option>
                 {allTags.map((value) => (
                   <option key={value} value={value}>
                     #{value}

@@ -7,6 +7,7 @@ import {
   BookOpenTextIcon,
   BookmarksIcon,
   CheckCircleIcon,
+  HashIcon,
   InstagramLogoIcon,
   LinkIcon,
   MagnifyingGlassIcon,
@@ -41,6 +42,12 @@ interface ReadLaterItem {
 
 type Status = "unread" | "read" | "all" | "archived";
 type Theme = "light" | "dark";
+interface TagFacet {
+  name: string;
+  count: number;
+}
+
+const UNTAGGED_FILTER = "__untagged__";
 type TargetField =
   | "url"
   | "title"
@@ -570,6 +577,8 @@ export function ReadLater() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [untaggedCount, setUntaggedCount] = useState(0);
+  const [tagFacets, setTagFacets] = useState<TagFacet[]>([]);
   const [editTags, setEditTags] = useState("");
   const [loadError, setLoadError] = useState<string>();
   const loadRef = useRef<HTMLDivElement>(null);
@@ -591,6 +600,8 @@ export function ReadLater() {
           items: ReadLaterItem[];
           nextCursor: string | null;
           unreadCount: number;
+          untaggedCount: number;
+          tagFacets: TagFacet[];
         }>(
           `/api/read-later?${params}`,
           undefined,
@@ -601,6 +612,8 @@ export function ReadLater() {
         );
         setCursor(payload.nextCursor);
         setUnreadCount(payload.unreadCount);
+        setUntaggedCount(payload.untaggedCount);
+        setTagFacets(payload.tagFacets);
       } catch (error) {
         setLoadError(
           error instanceof Error
@@ -618,11 +631,11 @@ export function ReadLater() {
     () =>
       [
         ...new Set([
-          ...items.flatMap((item) => item.tags),
-          ...(tag === "all" ? [] : [tag]),
+          ...tagFacets.map((facet) => facet.name),
+          ...(tag === "all" || tag === UNTAGGED_FILTER ? [] : [tag]),
         ]),
       ].sort(),
-    [items, tag],
+    [tag, tagFacets],
   );
 
   useEffect(() => {
@@ -772,6 +785,49 @@ export function ReadLater() {
               </button>
             ))}
           </div>
+          <div className="sidebar-section">
+            <p>Filters</p>
+            <button
+              className={tag === UNTAGGED_FILTER ? "active" : ""}
+              onClick={() =>
+                setTag((current) =>
+                  current === UNTAGGED_FILTER ? "all" : UNTAGGED_FILTER,
+                )
+              }
+              aria-pressed={tag === UNTAGGED_FILTER}
+            >
+              <HashIcon size={16} />
+              <span>Without tags</span>
+              <em>{untaggedCount}</em>
+            </button>
+          </div>
+          <div className="sidebar-section sidebar-tags">
+            <p className="sidebar-section-title">
+              <span>Tags</span>
+              <em>{tagFacets.length}</em>
+            </p>
+            {tagFacets.length > 0 ? (
+              tagFacets.map((facet) => (
+                <button
+                  key={facet.name}
+                  className={tag === facet.name ? "active" : ""}
+                  onClick={() =>
+                    setTag((current) =>
+                      current === facet.name ? "all" : facet.name,
+                    )
+                  }
+                  aria-pressed={tag === facet.name}
+                  title={`#${facet.name}`}
+                >
+                  <HashIcon size={15} />
+                  <span>{facet.name}</span>
+                  <em>{facet.count}</em>
+                </button>
+              ))
+            ) : (
+              <span className="sidebar-empty">No tags yet</span>
+            )}
+          </div>
         </nav>
         <div className="sidebar-footer">
           <span className="rl-local-note">
@@ -829,6 +885,7 @@ export function ReadLater() {
             onChange={(event) => setTag(event.target.value)}
           >
             <option value="all">All tags</option>
+            <option value={UNTAGGED_FILTER}>Without tags</option>
             {availableTags.map((value) => (
               <option key={value} value={value}>
                 {value}
