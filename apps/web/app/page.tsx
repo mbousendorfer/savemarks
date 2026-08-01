@@ -11,7 +11,14 @@ import { Library, type LibraryBookmark } from "./library";
 
 export const dynamic = "force-dynamic";
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ source?: string }>;
+}) {
+  const { source } = await searchParams;
+  const initialSource =
+    source === "x" || source === "instagram" ? source : undefined;
   const rows = await database()
     .select({
       id: bookmarks.id,
@@ -132,6 +139,7 @@ export default async function LibraryPage() {
     <Library
       initialBookmarks={[...byId.values()]}
       initialReadLaterCount={readLater?.value ?? 0}
+      initialSource={initialSource}
     />
   );
 }

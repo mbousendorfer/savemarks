@@ -32,8 +32,8 @@ Il reste ensuite deux actions manuelles :
 La page d’accueil est la bibliothèque : les bookmarks apparaissent dès qu’ils
 ont été synchronisés par l’extension.
 
-La section **Read later** permet aussi d’ajouter directement une URL ou
-d’importer jusqu’à 25 000 liens depuis un CSV ou un fichier texte. Voir le
+La source **Web** permet aussi d’ajouter directement une URL à la file
+**Read later** ou d’importer jusqu’à 25 000 liens depuis un CSV ou un fichier texte. Voir le
 [guide Read later](docs/read-later.md).
 
 Les médias et les données PostgreSQL locales sont conservés dans le dossier

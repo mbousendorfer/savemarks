@@ -1,6 +1,6 @@
-# Read later
+# Web et Read later
 
-La section **Read later** conserve une fiche enrichie et une image d’aperçu
+La source **Web** regroupe les liens sauvegardés pour **Read later**. Elle conserve une fiche enrichie et une image d’aperçu
 locale. Elle ne copie pas le contenu complet de l’article : le bouton **Open**
 ouvre toujours la page originale.
 
@@ -10,7 +10,7 @@ Trois méthodes utilisent la même déduplication et les mêmes tags :
 
 1. dans l’extension, ouvrir le popup puis utiliser **Read later** ;
 2. faire un clic droit sur une page ou un lien ;
-3. dans la web app, ouvrir **Read later**, puis **Add → One link**.
+3. dans la web app, ouvrir la source **Web**, puis **Add → One link**.
 
 Sauvegarder de nouveau une URL existante actualise sa fiche, la désarchive et
 la remet dans **To read**.

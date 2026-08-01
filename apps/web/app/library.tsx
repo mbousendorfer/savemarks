@@ -4,7 +4,6 @@ import {
   ArchiveIcon,
   ArrowSquareOutIcon,
   BookmarksIcon,
-  BookOpenTextIcon,
   CheckIcon,
   CopyIcon,
   CalendarBlankIcon,
@@ -21,6 +20,7 @@ import {
   SunIcon,
   TagIcon,
   TextTIcon,
+  TrashIcon,
   VideoCameraIcon,
   XIcon,
   XLogoIcon,
@@ -80,19 +80,15 @@ type Sort =
   | "saved-oldest"
   | "published-newest"
   | "published-oldest"
-  | "imported-newest"
-  | "imported-oldest"
   | "author-az";
 type Period = "anytime" | "7d" | "30d" | "90d" | "year";
 type ThemePreference = "system" | "light" | "dark";
 
 const sortLabels: Record<Sort, string> = {
-  "saved-newest": "Recently saved",
-  "saved-oldest": "Oldest saved",
+  "saved-newest": "Recently added",
+  "saved-oldest": "Oldest added",
   "published-newest": "Newest published",
   "published-oldest": "Oldest published",
-  "imported-newest": "Recently synced",
-  "imported-oldest": "Oldest synced",
   "author-az": "Author A–Z",
 };
 
@@ -137,16 +133,10 @@ function cardDate(
         : "Unknown",
     };
   }
-  if (sort.startsWith("imported")) {
-    return { label: "Synced", value: formatDate(bookmark.importedAt) };
-  }
-  if (bookmark.savedAt) {
-    return { label: "Saved", value: formatDate(bookmark.savedAt) };
-  }
-  if (bookmark.publishedAt) {
-    return { label: "Published", value: formatDate(bookmark.publishedAt) };
-  }
-  return { label: "Synced", value: formatDate(bookmark.importedAt) };
+  return {
+    label: "Added",
+    value: formatDate(bookmark.savedAt ?? bookmark.importedAt),
+  };
 }
 
 function savedTime(bookmark: LibraryBookmark): number {
@@ -206,9 +196,17 @@ function matchesFilter(bookmark: LibraryBookmark, filter: Filter): boolean {
 
 function SourceMark({ source }: { source: Source }) {
   return source === "x" ? (
-    <XLogoIcon size={13} weight="bold" />
+    <XLogoIcon
+      className="source-icon source-icon--x"
+      size={13}
+      weight="bold"
+    />
   ) : (
-    <InstagramLogoIcon size={14} weight="bold" />
+    <InstagramLogoIcon
+      className="source-icon"
+      size={14}
+      weight="bold"
+    />
   );
 }
 
@@ -248,13 +246,28 @@ function BookmarkCard({
   bookmark,
   view,
   sort,
+  selected,
+  selectionMode,
   onOpen,
+  onToggleSelected,
+  onArchive,
+  onDelete,
+  onAddTag,
 }: {
   bookmark: LibraryBookmark;
   view: View;
   sort: Sort;
+  selected: boolean;
+  selectionMode: boolean;
   onOpen: () => void;
+  onToggleSelected: () => void;
+  onArchive: () => Promise<unknown>;
+  onDelete: () => void;
+  onAddTag: (tag: string) => Promise<unknown>;
 }) {
+  const [tagging, setTagging] = useState(false);
+  const [quickTag, setQuickTag] = useState("");
+  const [busy, setBusy] = useState(false);
   const media = primaryMedia(bookmark);
   const copy = bookmark.text ?? bookmark.caption;
   const isTextual = !media;
@@ -262,15 +275,90 @@ function BookmarkCard({
 
   return (
     <article
-      className={`bookmark-card ${isTextual ? "bookmark-card--text" : ""} ${
+      className={`bookmark-card bookmark-card--source-${bookmark.source} ${isTextual ? "bookmark-card--text" : "bookmark-card--media"} ${
         view === "list" ? "bookmark-card--list" : ""
-      }`}
-      onClick={onOpen}
+      } ${selected ? "bookmark-card--selected" : ""}`}
+      onClick={selectionMode ? onToggleSelected : onOpen}
       tabIndex={0}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") onOpen();
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (selectionMode) onToggleSelected();
+          else onOpen();
+        }
       }}
     >
+      <div
+        className="card-quick-actions"
+        aria-label="Bookmark actions"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <button
+          className="card-select-action"
+          aria-label={selected ? "Deselect bookmark" : "Select bookmark"}
+          aria-pressed={selected}
+          title={selected ? "Deselect" : "Select"}
+          onClick={onToggleSelected}
+        >
+          {selected && <CheckIcon size={13} weight="bold" />}
+        </button>
+        <button
+          aria-label="Add a tag"
+          title="Add a tag"
+          onClick={() => setTagging((current) => !current)}
+        >
+          <TagIcon size={15} />
+        </button>
+        <button
+          aria-label={bookmark.archived ? "Restore bookmark" : "Archive bookmark"}
+          title={bookmark.archived ? "Restore" : "Archive"}
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void onArchive().finally(() => setBusy(false));
+          }}
+        >
+          <ArchiveIcon size={15} />
+        </button>
+        <button
+          className="card-danger-action"
+          aria-label="Delete bookmark"
+          title="Delete"
+          onClick={onDelete}
+        >
+          <TrashIcon size={15} />
+        </button>
+      </div>
+      {tagging && (
+        <form
+          className="card-tag-popover"
+          onClick={(event) => event.stopPropagation()}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const value = quickTag.trim().replace(/^#/, "").toLocaleLowerCase();
+            if (!value) return;
+            setBusy(true);
+            void onAddTag(value).finally(() => {
+              setBusy(false);
+              setQuickTag("");
+              setTagging(false);
+            });
+          }}
+        >
+          <TagIcon size={14} />
+          <input
+            autoFocus
+            value={quickTag}
+            disabled={busy}
+            maxLength={50}
+            placeholder="Tag name"
+            aria-label="Tag name"
+            onChange={(event) => setQuickTag(event.target.value)}
+          />
+          <button disabled={!quickTag.trim() || busy}>Add</button>
+        </form>
+      )}
       {media && (
         <div
           className="card-media"
@@ -316,7 +404,12 @@ function BookmarkCard({
             </strong>
             <span>@{bookmark.author.username}</span>
           </div>
-          <span className="source-mark">
+          <span
+            className="source-mark"
+            data-source={bookmark.source}
+            aria-label={bookmark.source === "x" ? "X" : "Instagram"}
+            title={bookmark.source === "x" ? "X" : "Instagram"}
+          >
             <SourceMark source={bookmark.source} />
           </span>
         </div>
@@ -332,7 +425,11 @@ function BookmarkCard({
           <span>
             {date.label} · {date.value}
           </span>
-          <span>{bookmark.contentType}</span>
+          <span className="card-origin">
+            <span>{bookmark.source === "x" ? "X" : "Instagram"}</span>
+            <i aria-hidden="true" />
+            {bookmark.contentType}
+          </span>
         </div>
       </div>
     </article>
@@ -370,6 +467,7 @@ function Detail({
     [bookmark.media],
   );
   const media = sortedMedia[activeMedia] ?? primaryMedia(bookmark);
+  const copy = bookmark.text ?? bookmark.caption;
 
   async function saveTags(nextTags: string[]): Promise<void> {
     setSavingTags(true);
@@ -428,7 +526,9 @@ function Detail({
   return (
     <div className="detail-backdrop" onMouseDown={onClose}>
       <section
-        className="detail-panel"
+        className={`detail-panel ${
+          media ? "detail-panel--media" : "detail-panel--text"
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="bookmark-detail-title"
@@ -436,6 +536,7 @@ function Detail({
       >
         <span className="sheet-handle" aria-hidden="true" />
         <button className="detail-close" onClick={onClose} aria-label="Close">
+          <span>Esc</span>
           <XIcon size={20} />
         </button>
         {media && (
@@ -471,18 +572,41 @@ function Detail({
           tabIndex={0}
           aria-label="Scrollable bookmark details"
         >
-          <div className="detail-kicker">
-            <SourceMark source={bookmark.source} />
-            {bookmark.source} · {bookmark.contentType}
-          </div>
-          <h2 id="bookmark-detail-title">
-            {bookmark.author.displayName ?? `@${bookmark.author.username}`}
-          </h2>
-          <p className="detail-handle">@{bookmark.author.username}</p>
-          {(bookmark.text ?? bookmark.caption) && (
-            <p className="detail-copy">{bookmark.text ?? bookmark.caption}</p>
+          <header className="detail-header">
+            <div className="detail-kicker">
+              <span className="detail-source-icon">
+                <SourceMark source={bookmark.source} />
+              </span>
+              <span>{bookmark.source}</span>
+              <i aria-hidden="true" />
+              <span>{bookmark.contentType}</span>
+              {bookmark.archived && <em>Archived</em>}
+            </div>
+            <div className="detail-author">
+              <Avatar
+                url={bookmark.author.avatarUrl}
+                username={bookmark.author.username}
+              />
+              <div>
+                <h2 id="bookmark-detail-title">
+                  {bookmark.author.displayName ??
+                    `@${bookmark.author.username}`}
+                </h2>
+                <p className="detail-handle">@{bookmark.author.username}</p>
+              </div>
+            </div>
+          </header>
+          {copy && (
+            <div className="detail-copy-frame">
+              <span aria-hidden="true" />
+              <p className="detail-copy">{copy}</p>
+            </div>
           )}
-          <div className="tag-editor">
+          <div className="tag-editor" aria-label="Bookmark tags">
+            <div className="detail-section-label">
+              <span>Tags</span>
+              <small>{bookmark.tags.length || "None"}</small>
+            </div>
             <div className="tag-list">
               {bookmark.tags.map((tag) => (
                 <button
@@ -535,44 +659,49 @@ function Detail({
               </dd>
             </div>
             <div>
-              <dt>Synced</dt>
-              <dd>{formatDate(bookmark.importedAt)}</dd>
-            </div>
-            <div>
-              <dt>Saved</dt>
-              <dd>
-                {bookmark.savedAt ? formatDate(bookmark.savedAt) : "Unknown"}
-              </dd>
-            </div>
-            <div>
-              <dt>Media</dt>
-              <dd>{bookmark.media.length || "None"}</dd>
-            </div>
-            <div>
-              <dt>Source ID</dt>
-              <dd>{bookmark.sourceItemId}</dd>
+              <dt>Added</dt>
+              <dd>{formatDate(bookmark.savedAt ?? bookmark.importedAt)}</dd>
             </div>
           </dl>
-          <div className="detail-actions">
-            <a
-              className="original-link"
-              href={bookmark.canonicalUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open original
-              <ArrowSquareOutIcon size={17} />
-            </a>
-            <button
-              className="archive-button"
-              disabled={savingArchive}
-              onClick={() => void toggleArchived()}
-            >
-              <ArchiveIcon size={16} />
-              {bookmark.archived ? "Restore" : "Archive"}
-            </button>
-          </div>
-          {archiveError && <p className="tag-error">{archiveError}</p>}
+          <details className="detail-technical">
+            <summary>Technical details</summary>
+            <dl>
+              <div>
+                <dt>Media</dt>
+                <dd>{bookmark.media.length || "None"}</dd>
+              </div>
+              <div>
+                <dt>Imported</dt>
+                <dd>{formatDate(bookmark.importedAt)}</dd>
+              </div>
+              <div>
+                <dt>Source ID</dt>
+                <dd>{bookmark.sourceItemId}</dd>
+              </div>
+            </dl>
+          </details>
+          <footer className="detail-actions-wrap">
+            <div className="detail-actions">
+              <a
+                className="original-link"
+                href={bookmark.canonicalUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open original
+                <ArrowSquareOutIcon size={17} />
+              </a>
+              <button
+                className="archive-button"
+                disabled={savingArchive}
+                onClick={() => void toggleArchived()}
+              >
+                <ArchiveIcon size={16} />
+                {bookmark.archived ? "Restore" : "Archive"}
+              </button>
+            </div>
+            {archiveError && <p className="tag-error">{archiveError}</p>}
+          </footer>
         </div>
       </section>
     </div>
@@ -638,22 +767,71 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+function DeleteDialog({
+  count,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="detail-backdrop confirm-backdrop" onMouseDown={onCancel}>
+      <section
+        className="confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <span className="confirm-icon"><TrashIcon size={20} /></span>
+        <p className="eyebrow">Permanent action</p>
+        <h2 id="delete-dialog-title">
+          Delete {count} {count === 1 ? "bookmark" : "bookmarks"}?
+        </h2>
+        <p id="delete-dialog-description">
+          The records will be removed permanently. Local media is deleted only
+          when no other bookmark uses it.
+        </p>
+        <div className="confirm-actions">
+          <button disabled={busy} onClick={onCancel}>Cancel</button>
+          <button className="confirm-delete" disabled={busy} onClick={onConfirm}>
+            <TrashIcon size={16} />
+            {busy ? "Deleting…" : "Delete permanently"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function Library({
   initialBookmarks,
   initialReadLaterCount,
+  initialSource,
 }: {
   initialBookmarks: LibraryBookmark[];
   initialReadLaterCount: number;
+  initialSource?: Source | undefined;
 }) {
   const router = useRouter();
   const [bookmarks, setBookmarks] = useState(initialBookmarks);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(initialSource ?? "all");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("grid");
   const [sort, setSort] = useState<Sort>("saved-newest");
   const [period, setPeriod] = useState<Period>("anytime");
   const [tag, setTag] = useState("all");
   const [selected, setSelected] = useState<LibraryBookmark>();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkTag, setBulkTag] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string>();
+  const [deleteIds, setDeleteIds] = useState<Set<string>>();
   const [pairing, setPairing] = useState(false);
   const [themePreference, setThemePreference] =
     useState<ThemePreference>("system");
@@ -706,13 +884,68 @@ export function Library({
   }, []);
 
   useEffect(() => {
-    if (!selected && !pairing) return;
+    if (!selected && !pairing && !deleteIds) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [pairing, selected]);
+  }, [deleteIds, pairing, selected]);
+
+  function toggleSelected(id: string): void {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function runBulkAction(
+    payload:
+      | { action: "archive"; ids: string[]; archived: boolean }
+      | { action: "add_tag"; ids: string[]; tag: string }
+      | { action: "delete"; ids: string[] },
+  ): Promise<boolean> {
+    setBulkBusy(true);
+    setBulkError(undefined);
+    try {
+      const response = await fetch("/api/bookmarks/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error("The bookmark action could not be completed");
+      const result = (await response.json()) as { ids: string[] };
+      const affected = new Set(result.ids);
+      if (payload.action === "delete") {
+        setBookmarks((current) => current.filter((item) => !affected.has(item.id)));
+        setSelected((current) => current && affected.has(current.id) ? undefined : current);
+      } else if (payload.action === "archive") {
+        setBookmarks((current) => current.map((item) =>
+          affected.has(item.id) ? { ...item, archived: payload.archived } : item,
+        ));
+      } else {
+        setBookmarks((current) => current.map((item) =>
+          affected.has(item.id) && !item.tags.includes(payload.tag)
+            ? { ...item, tags: [...item.tags, payload.tag].sort() }
+            : item,
+        ));
+      }
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        for (const id of affected) next.delete(id);
+        return next;
+      });
+      setBulkTag("");
+      return true;
+    } catch (error) {
+      setBulkError(error instanceof Error ? error.message : "Bookmark action failed");
+      return false;
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   useEffect(() => {
     void fetch("/api/media/sync", { method: "POST" });
@@ -774,18 +1007,6 @@ export function Library({
           "oldest",
         );
       }
-      if (sort === "imported-newest") {
-        return (
-          new Date(right.importedAt).getTime() -
-          new Date(left.importedAt).getTime()
-        );
-      }
-      if (sort === "imported-oldest") {
-        return (
-          new Date(left.importedAt).getTime() -
-          new Date(right.importedAt).getTime()
-        );
-      }
       if (sort === "author-az") {
         return (left.author.displayName ?? left.author.username).localeCompare(
           right.author.displayName ?? right.author.username,
@@ -796,6 +1017,14 @@ export function Library({
   }, [bookmarks, filter, period, query, sort, tag]);
 
   const rendered = visible.slice(0, renderLimit);
+  const selectedBookmarks = useMemo(
+    () => bookmarks.filter((bookmark) => selectedIds.has(bookmark.id)),
+    [bookmarks, selectedIds],
+  );
+  const selectionMode = selectedIds.size > 0;
+  const selectedAreArchived =
+    selectedBookmarks.length > 0 &&
+    selectedBookmarks.every((bookmark) => bookmark.archived);
 
   useEffect(() => {
     setRenderLimit(INITIAL_RENDER_COUNT);
@@ -865,11 +1094,6 @@ export function Library({
         <nav className="sidebar-nav" aria-label="Library navigation">
           <div className="sidebar-section">
             <p>Workspace</p>
-            <a href="/read-later" aria-label="Read later">
-              <BookOpenTextIcon size={16} />
-              <span>Read later</span>
-              <em>{initialReadLaterCount}</em>
-            </a>
             {(
               [
                 ["all", BookmarksIcon],
@@ -892,6 +1116,11 @@ export function Library({
           </div>
           <div className="sidebar-section">
             <p>Sources</p>
+            <a href="/web" aria-label="Web">
+              <LinkIcon size={16} />
+              <span>Web</span>
+              <em>{initialReadLaterCount}</em>
+            </a>
             {(
               [
                 ["x", XLogoIcon],
@@ -1090,7 +1319,7 @@ export function Library({
             </label>
             <label>
               <CalendarBlankIcon size={15} />
-              <span>Saved</span>
+              <span>Added</span>
               <select
                 value={period}
                 onChange={(event) => setPeriod(event.target.value as Period)}
@@ -1137,9 +1366,20 @@ export function Library({
           )}
         </div>
 
-        <div className="index-line" aria-hidden="true">
+        <div className="index-line">
           <span>INDEX / {filter.toUpperCase()}</span>
-          <span>{sortLabels[sort]}</span>
+          <span className="index-line-actions">
+            <button
+              className="index-select"
+              disabled={visible.length === 0}
+              onClick={() =>
+                setSelectedIds(new Set(visible.map((bookmark) => bookmark.id)))
+              }
+            >
+              Select visible
+            </button>
+            <span>{sortLabels[sort]}</span>
+          </span>
         </div>
 
         {visible.length > 0 ? (
@@ -1155,7 +1395,25 @@ export function Library({
                     bookmark={bookmark}
                     view={view}
                     sort={sort}
+                    selected={selectedIds.has(bookmark.id)}
+                    selectionMode={selectionMode}
                     onOpen={() => setSelected(bookmark)}
+                    onToggleSelected={() => toggleSelected(bookmark.id)}
+                    onArchive={() =>
+                      runBulkAction({
+                        action: "archive",
+                        ids: [bookmark.id],
+                        archived: !bookmark.archived,
+                      })
+                    }
+                    onDelete={() => setDeleteIds(new Set([bookmark.id]))}
+                    onAddTag={(nextTag) =>
+                      runBulkAction({
+                        action: "add_tag",
+                        ids: [bookmark.id],
+                        tag: nextTag,
+                      })
+                    }
                   />
                 </div>
               ))}
@@ -1186,10 +1444,79 @@ export function Library({
         )}
       </section>
 
+      {selectionMode && (
+        <aside className="bulk-toolbar" aria-label="Bulk bookmark actions">
+          <div className="bulk-count">
+            <span>{selectedIds.size}</span>
+            <div>
+              <strong>Selected</strong>
+              <small>{selectedIds.size === visible.length ? "All visible" : "Custom selection"}</small>
+            </div>
+          </div>
+          <form
+            className="bulk-tag"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = bulkTag.trim().replace(/^#/, "").toLocaleLowerCase();
+              if (!value) return;
+              void runBulkAction({
+                action: "add_tag",
+                ids: [...selectedIds],
+                tag: value,
+              });
+            }}
+          >
+            <TagIcon size={16} />
+            <input
+              value={bulkTag}
+              disabled={bulkBusy}
+              maxLength={50}
+              placeholder="Add tag to selection"
+              aria-label="Tag for selected bookmarks"
+              onChange={(event) => setBulkTag(event.target.value)}
+            />
+            <button disabled={!bulkTag.trim() || bulkBusy}>Add</button>
+          </form>
+          <div className="bulk-actions">
+            <button
+              disabled={bulkBusy}
+              onClick={() =>
+                void runBulkAction({
+                  action: "archive",
+                  ids: [...selectedIds],
+                  archived: !selectedAreArchived,
+                })
+              }
+            >
+              <ArchiveIcon size={16} />
+              {selectedAreArchived ? "Restore" : "Archive"}
+            </button>
+            <button
+              className="bulk-delete"
+              disabled={bulkBusy}
+              onClick={() => setDeleteIds(new Set(selectedIds))}
+            >
+              <TrashIcon size={16} />
+              Delete
+            </button>
+            <button
+              className="bulk-clear"
+              disabled={bulkBusy}
+              onClick={() => setSelectedIds(new Set())}
+              aria-label="Clear selection"
+              title="Clear selection"
+            >
+              <XIcon size={17} />
+            </button>
+          </div>
+          {bulkError && <p className="bulk-error">{bulkError}</p>}
+        </aside>
+      )}
+
       <nav className="mobile-dock" aria-label="Mobile library navigation">
-        <a href="/read-later">
-          <BookOpenTextIcon size={20} />
-          <span>Read later</span>
+        <a href="/web">
+          <LinkIcon size={20} />
+          <span>Web</span>
         </a>
         {(
           [
@@ -1236,6 +1563,19 @@ export function Library({
         />
       )}
       {pairing && <PairingDialog onClose={() => setPairing(false)} />}
+      {deleteIds && (
+        <DeleteDialog
+          count={deleteIds.size}
+          busy={bulkBusy}
+          onCancel={() => setDeleteIds(undefined)}
+          onConfirm={() => {
+            const ids = [...deleteIds];
+            void runBulkAction({ action: "delete", ids }).then((success) => {
+              if (success) setDeleteIds(undefined);
+            });
+          }}
+        />
+      )}
     </main>
   );
 }

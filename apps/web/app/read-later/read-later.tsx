@@ -7,6 +7,8 @@ import {
   BookOpenTextIcon,
   BookmarksIcon,
   CheckCircleIcon,
+  InstagramLogoIcon,
+  LinkIcon,
   MagnifyingGlassIcon,
   MoonIcon,
   PlusIcon,
@@ -14,6 +16,7 @@ import {
   TagIcon,
   UploadSimpleIcon,
   XIcon,
+  XLogoIcon,
 } from "@phosphor-icons/react";
 import Papa from "papaparse";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -292,10 +295,10 @@ function AddPanel({ onClose, onComplete }: { onClose: () => void; onComplete: ()
   }
 
   return (
-    <div className="rl-overlay" role="dialog" aria-modal="true" aria-label="Add to Read later">
+    <div className="rl-overlay" role="dialog" aria-modal="true" aria-label="Add a Web link">
       <section className="rl-add-panel">
         <header>
-          <div><p className="eyebrow">Capture</p><h2>Add to Read later</h2></div>
+          <div><p className="eyebrow">Read later</p><h2>Add to Web</h2></div>
           <button className="rl-icon-button" onClick={onClose} aria-label="Close"><XIcon size={20} /></button>
         </header>
         <div className="rl-tabs">
@@ -401,13 +404,25 @@ export function ReadLater() {
     <main className="app-shell rl-shell">
       <aside className="sidebar rl-sidebar">
         <a className="brand" href="/"><span className="brand-mark"><BookmarksIcon size={19} weight="fill" /></span><span className="brand-copy"><strong>SaveMarks</strong><small>local archive</small></span></a>
-        <nav className="sidebar-nav"><div className="sidebar-section"><p>Workspace</p><a href="/"><BookmarksIcon size={16} /><span>Library</span></a><a className="active" href="/read-later"><BookOpenTextIcon size={16} /><span>Read later</span><em>{unreadCount}</em></a></div><div className="sidebar-section"><p>Status</p>{([["unread", BookOpenTextIcon], ["read", CheckCircleIcon], ["all", BookmarksIcon], ["archived", ArchiveIcon]] as Array<[Status, typeof BookOpenTextIcon]>).map(([value, Icon]) => <button key={value} className={status === value ? "active" : ""} onClick={() => setStatus(value)}><Icon size={16} /><span>{value === "unread" ? "To read" : value === "read" ? "Finished" : value[0]!.toUpperCase() + value.slice(1)}</span>{value === "unread" && <em>{unreadCount}</em>}</button>)}</div></nav>
+        <nav className="sidebar-nav" aria-label="Library navigation">
+          <div className="sidebar-section">
+            <p>Workspace</p>
+            <a href="/"><BookmarksIcon size={16} /><span>All</span></a>
+          </div>
+          <div className="sidebar-section">
+            <p>Sources</p>
+            <a href="/?source=x"><XLogoIcon size={16} /><span>X</span></a>
+            <a href="/?source=instagram"><InstagramLogoIcon size={16} /><span>Instagram</span></a>
+            <a className="active" href="/web" aria-current="page"><LinkIcon size={16} /><span>Web</span><em>{unreadCount}</em></a>
+          </div>
+          <div className="sidebar-section"><p>Status</p>{([["unread", BookOpenTextIcon], ["read", CheckCircleIcon], ["all", BookmarksIcon], ["archived", ArchiveIcon]] as Array<[Status, typeof BookOpenTextIcon]>).map(([value, Icon]) => <button key={value} className={status === value ? "active" : ""} onClick={() => setStatus(value)}><Icon size={16} /><span>{value === "unread" ? "To read" : value === "read" ? "Finished" : value[0]!.toUpperCase() + value.slice(1)}</span>{value === "unread" && <em>{unreadCount}</em>}</button>)}</div>
+        </nav>
         <div className="sidebar-footer"><span className="rl-local-note">Preview images stay on your server.</span></div>
       </aside>
 
       <section className="workspace rl-workspace">
-        <div className="workspace-bar"><div className="workspace-path"><span>savemarks</span><b>/</b><strong>read-later</strong></div><div className="workspace-tools"><ThemeButton /><button className="rl-primary rl-add-button" onClick={() => setAdding(true)}><PlusIcon size={17} /> Add</button></div></div>
-        <header className="library-header rl-header"><div><p className="eyebrow">Queue / web</p><h1>Read later</h1><p className="result-count">{items.length} loaded · {status}</p></div><div className="rl-header-mark"><BookOpenTextIcon size={32} /></div></header>
+        <div className="workspace-bar"><div className="workspace-path"><span>savemarks</span><b>/</b><strong>web</strong></div><div className="workspace-tools"><ThemeButton /><button className="rl-primary rl-add-button" onClick={() => setAdding(true)}><PlusIcon size={17} /> Add</button></div></div>
+        <header className="library-header rl-header"><div><p className="eyebrow">Source / 03</p><h1>Web</h1><p className="result-count">{items.length} loaded · {status} · read later</p></div><div className="rl-header-mark"><LinkIcon size={32} /></div></header>
         <div className="command-row rl-command"><label className="search"><MagnifyingGlassIcon size={19} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, sites, excerpts…" />{query && <button onClick={() => setQuery("")}><XIcon size={15} /></button>}</label><select className="rl-select" value={tag} onChange={(event) => setTag(event.target.value)}><option value="all">All tags</option>{availableTags.map((value) => <option key={value} value={value}>{value}</option>)}</select><select className="rl-select" value={sort} onChange={(event) => setSort(event.target.value as "newest" | "oldest")}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></div>
 
         <div className="rl-status-strip">{(["unread", "read", "all", "archived"] as Status[]).map((value) => <button key={value} className={status === value ? "active" : ""} onClick={() => setStatus(value)}>{value === "unread" ? "To read" : value === "read" ? "Finished" : value}</button>)}</div>
@@ -420,13 +435,13 @@ export function ReadLater() {
               <div className="rl-actions"><a href={item.canonicalUrl} target="_blank" rel="noreferrer" title="Open original"><ArrowSquareOutIcon size={18} /></a><button onClick={() => void patchItem(item.id, { read: !item.readAt })} title={item.readAt ? "Mark unread" : "Mark finished"}><CheckCircleIcon size={18} weight={item.readAt ? "fill" : "regular"} /></button><button onClick={() => { setEditing(item.id); setEditTags(item.tags.join(", ")); }} title="Edit tags"><TagIcon size={18} /></button>{item.enrichmentStatus === "failed" && <button onClick={() => void fetch(`/api/read-later/${item.id}/retry`, { method: "POST" }).then(() => load(false))} title="Retry enrichment"><ArrowClockwiseIcon size={18} /></button>}<button onClick={() => void patchItem(item.id, { archived: !item.archived })} title="Archive"><ArchiveIcon size={18} /></button></div>
             </article>
           ))}
-          {!loading && !items.length && <div className="empty-state"><BookOpenTextIcon size={30} /><h2>Your reading queue is clear</h2><p>Add a link, import a CSV, or use the extension.</p><button className="rl-primary" onClick={() => setAdding(true)}><PlusIcon /> Add your first link</button></div>}
+          {!loading && !items.length && <div className="empty-state"><LinkIcon size={30} /><h2>Your Web library is empty</h2><p>Add a link, import a CSV, or use the extension.</p><button className="rl-primary" onClick={() => setAdding(true)}><PlusIcon /> Add your first link</button></div>}
           {loading && !items.length && <div className="rl-loading">Loading your queue…</div>}
           <div ref={loadRef} className="rl-load-sentinel">{loading && items.length > 0 ? "Loading more…" : ""}</div>
         </section>
       </section>
 
-      <nav className="mobile-dock rl-mobile-dock"><a href="/"><BookmarksIcon size={20} /><span>Library</span></a><a className="active" href="/read-later"><BookOpenTextIcon size={20} weight="fill" /><span>Read later</span></a><button onClick={() => setStatus("read")}><CheckCircleIcon size={20} /><span>Finished</span></button><button onClick={() => setAdding(true)}><PlusIcon size={20} /><span>Add</span></button></nav>
+      <nav className="mobile-dock rl-mobile-dock" aria-label="Mobile source navigation"><a href="/"><BookmarksIcon size={20} /><span>All</span></a><a href="/?source=x"><XLogoIcon size={20} /><span>X</span></a><a href="/?source=instagram"><InstagramLogoIcon size={20} /><span>Instagram</span></a><a className="active" href="/web" aria-current="page"><LinkIcon size={20} weight="bold" /><span>Web</span></a><button onClick={() => setAdding(true)}><PlusIcon size={20} /><span>Add</span></button></nav>
       {adding && <AddPanel onClose={() => setAdding(false)} onComplete={() => void load(false)} />}
     </main>
   );

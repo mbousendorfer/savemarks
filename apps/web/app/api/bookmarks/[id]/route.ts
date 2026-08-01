@@ -2,6 +2,7 @@ import { bookmarks, database } from "@savemarks/database";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { readJson } from "../../../../lib/http";
+import { deleteBookmarks } from "../../../../lib/bookmark-actions";
 
 const updateBookmarkSchema = z
   .object({ archived: z.boolean().optional(), read: z.boolean().optional() })
@@ -47,4 +48,23 @@ export async function PATCH(
     ...updated,
     readAt: updated.readAt?.toISOString() ?? null,
   });
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return Response.json({ error: "Origin not allowed" }, { status: 403 });
+  }
+  const { id } = await context.params;
+  if (!z.string().uuid().safeParse(id).success) {
+    return Response.json({ error: "Invalid bookmark ID" }, { status: 400 });
+  }
+  const deleted = await deleteBookmarks([id]);
+  if (deleted.length === 0) {
+    return Response.json({ error: "Bookmark not found" }, { status: 404 });
+  }
+  return Response.json({ id, deleted: true });
 }
