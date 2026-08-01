@@ -74,6 +74,7 @@ type Sort =
   | "published-newest"
   | "published-oldest"
   | "imported-newest"
+  | "imported-oldest"
   | "author-az";
 type Period = "anytime" | "7d" | "30d" | "90d" | "year";
 
@@ -82,7 +83,8 @@ const sortLabels: Record<Sort, string> = {
   "saved-oldest": "Oldest saved",
   "published-newest": "Newest published",
   "published-oldest": "Oldest published",
-  "imported-newest": "Recently imported",
+  "imported-newest": "Recently synced",
+  "imported-oldest": "Oldest synced",
   "author-az": "Author A–Z",
 };
 
@@ -106,10 +108,8 @@ const filterLabels: Record<Filter, string> = {
   archived: "Archived",
 };
 
-function displayDate(bookmark: LibraryBookmark): string {
-  const date = new Date(
-    bookmark.savedAt ?? bookmark.publishedAt ?? bookmark.importedAt,
-  );
+function formatDate(value: string): string {
+  const date = new Date(value);
   return new Intl.DateTimeFormat("en", {
     day: "numeric",
     month: "short",
@@ -117,10 +117,46 @@ function displayDate(bookmark: LibraryBookmark): string {
   }).format(date);
 }
 
+function cardDate(
+  bookmark: LibraryBookmark,
+  sort: Sort,
+): { label: string; value: string } {
+  if (sort.startsWith("published")) {
+    return {
+      label: "Published",
+      value: bookmark.publishedAt
+        ? formatDate(bookmark.publishedAt)
+        : "Unknown",
+    };
+  }
+  if (sort.startsWith("imported")) {
+    return { label: "Synced", value: formatDate(bookmark.importedAt) };
+  }
+  if (bookmark.savedAt) {
+    return { label: "Saved", value: formatDate(bookmark.savedAt) };
+  }
+  if (bookmark.publishedAt) {
+    return { label: "Published", value: formatDate(bookmark.publishedAt) };
+  }
+  return { label: "Synced", value: formatDate(bookmark.importedAt) };
+}
+
 function savedTime(bookmark: LibraryBookmark): number {
   return new Date(
     bookmark.savedAt ?? bookmark.publishedAt ?? bookmark.importedAt,
   ).getTime();
+}
+
+function compareOptionalDates(
+  left: string | null,
+  right: string | null,
+  direction: "newest" | "oldest",
+): number {
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  const difference = new Date(left).getTime() - new Date(right).getTime();
+  return direction === "oldest" ? difference : -difference;
 }
 
 function primaryMedia(bookmark: LibraryBookmark): LibraryMedia | undefined {
@@ -171,15 +207,18 @@ function SourceMark({ source }: { source: Source }) {
 function BookmarkCard({
   bookmark,
   view,
+  sort,
   onOpen,
 }: {
   bookmark: LibraryBookmark;
   view: View;
+  sort: Sort;
   onOpen: () => void;
 }) {
   const media = primaryMedia(bookmark);
   const copy = bookmark.text ?? bookmark.caption;
   const isTextual = !media;
+  const date = cardDate(bookmark, sort);
 
   return (
     <article
@@ -256,7 +295,9 @@ function BookmarkCard({
           </div>
         )}
         <div className="card-footer">
-          <span>{displayDate(bookmark)}</span>
+          <span>
+            {date.label} · {date.value}
+          </span>
           <span>{bookmark.contentType}</span>
         </div>
       </div>
@@ -448,7 +489,21 @@ function Detail({
           <dl className="detail-meta">
             <div>
               <dt>Published</dt>
-              <dd>{displayDate(bookmark)}</dd>
+              <dd>
+                {bookmark.publishedAt
+                  ? formatDate(bookmark.publishedAt)
+                  : "Unknown"}
+              </dd>
+            </div>
+            <div>
+              <dt>Synced</dt>
+              <dd>{formatDate(bookmark.importedAt)}</dd>
+            </div>
+            <div>
+              <dt>Saved</dt>
+              <dd>
+                {bookmark.savedAt ? formatDate(bookmark.savedAt) : "Unknown"}
+              </dd>
             </div>
             <div>
               <dt>Media</dt>
@@ -600,28 +655,34 @@ export function Library({
         .toLocaleLowerCase()
         .includes(needle);
     });
-    const time = (value: string | null, fallback: string) =>
-      new Date(value ?? fallback).getTime();
     return filtered.sort((left, right) => {
       if (sort === "saved-oldest") {
         return savedTime(left) - savedTime(right);
       }
       if (sort === "published-newest") {
-        return (
-          time(right.publishedAt, right.importedAt) -
-          time(left.publishedAt, left.importedAt)
+        return compareOptionalDates(
+          left.publishedAt,
+          right.publishedAt,
+          "newest",
         );
       }
       if (sort === "published-oldest") {
-        return (
-          time(left.publishedAt, left.importedAt) -
-          time(right.publishedAt, right.importedAt)
+        return compareOptionalDates(
+          left.publishedAt,
+          right.publishedAt,
+          "oldest",
         );
       }
       if (sort === "imported-newest") {
         return (
-          time(right.importedAt, right.importedAt) -
-          time(left.importedAt, left.importedAt)
+          new Date(right.importedAt).getTime() -
+          new Date(left.importedAt).getTime()
+        );
+      }
+      if (sort === "imported-oldest") {
+        return (
+          new Date(left.importedAt).getTime() -
+          new Date(right.importedAt).getTime()
         );
       }
       if (sort === "author-az") {
@@ -837,6 +898,7 @@ export function Library({
                 <BookmarkCard
                   bookmark={bookmark}
                   view={view}
+                  sort={sort}
                   onOpen={() => setSelected(bookmark)}
                 />
               </div>
