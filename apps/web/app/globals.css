@@ -312,6 +312,46 @@ select:focus-visible,
   gap: 8px;
 }
 
+.workspace-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.theme-toggle {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-glass);
+}
+
+.theme-toggle button {
+  display: grid;
+  width: 24px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: 140ms ease;
+  transition-property: color, background;
+}
+
+.theme-toggle button:hover {
+  color: var(--ink);
+}
+
+.theme-toggle button.active {
+  background: var(--panel-soft);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
 .library-header {
   display: flex;
   max-width: 1600px;
@@ -1270,8 +1310,50 @@ select:focus-visible,
   padding: 11px;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0c0a;
+  --panel: #111410;
+  --panel-soft: #171b16;
+  --panel-glass: rgba(14, 17, 14, 0.88);
+  --sidebar: #0d100d;
+  --ink: #eef1eb;
+  --muted: #929990;
+  --faint: #697168;
+  --line: #242a23;
+  --line-strong: #363e34;
+  --accent: #b8f45d;
+  --accent-ink: #17220b;
+  --danger: #ff8e82;
+  --overlay: rgba(3, 4, 3, 0.82);
+  --shadow: 0 20px 64px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme="dark"] body {
+  background:
+    linear-gradient(rgba(190, 205, 185, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(190, 205, 185, 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 74% -10%, rgba(184, 244, 93, 0.07), transparent 34rem),
+    var(--bg);
+  background-size: 32px 32px, 32px 32px, auto, auto;
+}
+
+:root[data-theme="dark"] .sidebar-section button.active svg,
+:root[data-theme="dark"] .card-tags span,
+:root[data-theme="dark"] .tag-list button {
+  color: var(--accent);
+}
+
+:root[data-theme="dark"] .view-toggle button.active,
+:root[data-theme="dark"] .tag-input button,
+:root[data-theme="dark"] .button-dark,
+:root[data-theme="dark"] .original-link {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     color-scheme: dark;
     --bg: #0a0c0a;
     --panel: #111410;
@@ -1290,7 +1372,7 @@ select:focus-visible,
     --shadow: 0 20px 64px rgba(0, 0, 0, 0.42);
   }
 
-  body {
+  :root:not([data-theme]) body {
     background:
       linear-gradient(rgba(190, 205, 185, 0.022) 1px, transparent 1px),
       linear-gradient(90deg, rgba(190, 205, 185, 0.022) 1px, transparent 1px),
@@ -1299,16 +1381,16 @@ select:focus-visible,
     background-size: 32px 32px, 32px 32px, auto, auto;
   }
 
-  .sidebar-section button.active svg,
-  .card-tags span,
-  .tag-list button {
+  :root:not([data-theme]) .sidebar-section button.active svg,
+  :root:not([data-theme]) .card-tags span,
+  :root:not([data-theme]) .tag-list button {
     color: var(--accent);
   }
 
-  .view-toggle button.active,
-  .tag-input button,
-  .button-dark,
-  .original-link {
+  :root:not([data-theme]) .view-toggle button.active,
+  :root:not([data-theme]) .tag-input button,
+  :root:not([data-theme]) .button-dark,
+  :root:not([data-theme]) .original-link {
     background: var(--accent);
     color: var(--accent-ink);
   }

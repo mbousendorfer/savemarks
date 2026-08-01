@@ -14,7 +14,10 @@ import {
   InstagramLogoIcon,
   LinkIcon,
   MagnifyingGlassIcon,
+  MoonIcon,
+  MonitorIcon,
   RowsIcon,
+  SunIcon,
   TagIcon,
   TextTIcon,
   VideoCameraIcon,
@@ -80,6 +83,7 @@ type Sort =
   | "imported-oldest"
   | "author-az";
 type Period = "anytime" | "7d" | "30d" | "90d" | "year";
+type ThemePreference = "system" | "light" | "dark";
 
 const sortLabels: Record<Sort, string> = {
   "saved-newest": "Recently saved",
@@ -207,6 +211,38 @@ function SourceMark({ source }: { source: Source }) {
   );
 }
 
+function Avatar({
+  url,
+  username,
+}: {
+  url: string | null;
+  username: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => setFailed(false), [url]);
+
+  if (url && !failed) {
+    return (
+      <img
+        className="avatar"
+        src={url}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span className="avatar avatar--fallback" aria-hidden="true">
+      {username.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
 function BookmarkCard({
   bookmark,
   view,
@@ -269,20 +305,10 @@ function BookmarkCard({
       )}
       <div className="card-body">
         <div className="card-author">
-          {bookmark.author.avatarUrl ? (
-            <img
-              className="avatar"
-              src={bookmark.author.avatarUrl}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <span className="avatar avatar--fallback">
-              {bookmark.author.username.slice(0, 1).toUpperCase()}
-            </span>
-          )}
+          <Avatar
+            url={bookmark.author.avatarUrl}
+            username={bookmark.author.username}
+          />
           <div>
             <strong>
               {bookmark.author.displayName ?? `@${bookmark.author.username}`}
@@ -617,11 +643,41 @@ export function Library({
   const [tag, setTag] = useState("all");
   const [selected, setSelected] = useState<LibraryBookmark>();
   const [pairing, setPairing] = useState(false);
+  const [themePreference, setThemePreference] =
+    useState<ThemePreference>("system");
+  const [themeReady, setThemeReady] = useState(false);
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDER_COUNT);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setBookmarks(initialBookmarks), [initialBookmarks]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("savemarks-theme");
+    if (stored === "light" || stored === "dark" || stored === "system") {
+      setThemePreference(stored);
+    }
+    setThemeReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!themeReady) return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const resolved =
+        themePreference === "system"
+          ? media.matches
+            ? "dark"
+            : "light"
+          : themePreference;
+      document.documentElement.dataset.theme = resolved;
+    };
+    apply();
+    window.localStorage.setItem("savemarks-theme", themePreference);
+    if (themePreference !== "system") return;
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [themePreference, themeReady]);
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -875,9 +931,34 @@ export function Library({
             <span>~/savemarks</span>
             <strong>/{filter}</strong>
           </div>
-          <div className="workspace-status">
-            <span className="status-dot" />
-            local-first
+          <div className="workspace-tools">
+            <div className="theme-toggle" role="group" aria-label="Theme">
+              {(
+                [
+                  ["system", MonitorIcon, "Automatic theme"],
+                  ["light", SunIcon, "Light theme"],
+                  ["dark", MoonIcon, "Dark theme"],
+                ] as const
+              ).map(([value, Icon, label]) => (
+                <button
+                  key={value}
+                  className={themePreference === value ? "active" : ""}
+                  aria-label={label}
+                  aria-pressed={themePreference === value}
+                  title={label}
+                  onClick={() => setThemePreference(value)}
+                >
+                  <Icon
+                    size={13}
+                    weight={themePreference === value ? "fill" : "regular"}
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="workspace-status">
+              <span className="status-dot" />
+              local-first
+            </div>
           </div>
         </div>
         <header className="library-header">
