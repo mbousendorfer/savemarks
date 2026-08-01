@@ -22,7 +22,10 @@ import {
   XLogoIcon,
 } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const INITIAL_RENDER_COUNT = 48;
+const RENDER_BATCH_SIZE = 48;
 
 type Source = "x" | "instagram";
 type ContentType =
@@ -245,6 +248,8 @@ function BookmarkCard({
             src={media.url}
             alt=""
             loading="lazy"
+            decoding="async"
+            fetchPriority="low"
             referrerPolicy="no-referrer"
           />
           {(bookmark.contentType === "video" ||
@@ -269,6 +274,8 @@ function BookmarkCard({
               className="avatar"
               src={bookmark.author.avatarUrl}
               alt=""
+              loading="lazy"
+              decoding="async"
               referrerPolicy="no-referrer"
             />
           ) : (
@@ -610,15 +617,17 @@ export function Library({
   const [tag, setTag] = useState("all");
   const [selected, setSelected] = useState<LibraryBookmark>();
   const [pairing, setPairing] = useState(false);
+  const [renderLimit, setRenderLimit] = useState(INITIAL_RENDER_COUNT);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setBookmarks(initialBookmarks), [initialBookmarks]);
 
   useEffect(() => {
     void fetch("/api/media/sync", { method: "POST" });
-    const refreshes = [5_000, 15_000, 30_000, 60_000].map((delay) =>
-      window.setTimeout(() => router.refresh(), delay),
-    );
-    return () => refreshes.forEach((timer) => window.clearTimeout(timer));
+    const refresh = window.setTimeout(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30_000);
+    return () => window.clearTimeout(refresh);
   }, [router]);
 
   const allTags = useMemo(
@@ -693,6 +702,28 @@ export function Library({
       return savedTime(right) - savedTime(left);
     });
   }, [bookmarks, filter, period, query, sort, tag]);
+
+  const rendered = visible.slice(0, renderLimit);
+
+  useEffect(() => {
+    setRenderLimit(INITIAL_RENDER_COUNT);
+  }, [filter, period, query, sort, tag, view]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || renderLimit >= visible.length) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setRenderLimit((current) =>
+          Math.min(current + RENDER_BATCH_SIZE, visible.length),
+        );
+      },
+      { rootMargin: "1200px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [renderLimit, visible.length]);
 
   const hasRefinements =
     query.trim() !== "" || period !== "anytime" || tag !== "all";
@@ -888,22 +919,40 @@ export function Library({
         </div>
 
         {visible.length > 0 ? (
-          <div className={`bookmark-grid bookmark-grid--${view}`}>
-            {visible.map((bookmark, index) => (
-              <div
-                className="card-reveal"
-                style={{ animationDelay: `${Math.min(index, 18) * 24}ms` }}
-                key={bookmark.id}
-              >
-                <BookmarkCard
-                  bookmark={bookmark}
-                  view={view}
-                  sort={sort}
-                  onOpen={() => setSelected(bookmark)}
-                />
+          <>
+            <div className={`bookmark-grid bookmark-grid--${view}`}>
+              {rendered.map((bookmark, index) => (
+                <div
+                  className="card-reveal"
+                  style={{ animationDelay: `${Math.min(index, 18) * 24}ms` }}
+                  key={bookmark.id}
+                >
+                  <BookmarkCard
+                    bookmark={bookmark}
+                    view={view}
+                    sort={sort}
+                    onOpen={() => setSelected(bookmark)}
+                  />
+                </div>
+              ))}
+            </div>
+            {rendered.length < visible.length && (
+              <div className="load-more" ref={loadMoreRef}>
+                <button
+                  onClick={() =>
+                    setRenderLimit((current) =>
+                      Math.min(current + RENDER_BATCH_SIZE, visible.length),
+                    )
+                  }
+                >
+                  Load more
+                  <span>
+                    {rendered.length} / {visible.length}
+                  </span>
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div className="empty-state">
             <MagnifyingGlassIcon size={28} />
