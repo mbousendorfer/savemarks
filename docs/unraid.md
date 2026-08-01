@@ -128,7 +128,52 @@ curl http://scarif.local:3210/api/health
 
 Le port PostgreSQL n’est pas publié sur le LAN.
 
-## 5. Pairer l’extension Chrome
+## 5. Rendre SaveMarks accessible hors du réseau local
+
+### Option recommandée : Tailscale Serve
+
+Cette option garde SaveMarks privé : seuls les appareils connectés à votre
+tailnet peuvent l’atteindre. Elle fournit aussi automatiquement une URL HTTPS,
+sans ouvrir le port 3210 sur le routeur.
+
+Après avoir installé et connecté Tailscale sur Unraid, lancer sur le NAS :
+
+```bash
+tailscale serve --bg 3210
+tailscale serve status
+```
+
+La commande affiche une URL semblable à :
+
+```text
+https://scarif.<nom-du-tailnet>.ts.net
+```
+
+Installer également Tailscale sur l’ordinateur qui utilise Chrome. Vérifier que
+cette URL ouvre la web app, puis l’utiliser telle quelle dans les paramètres de
+l’extension. Le client Tailscale doit être connecté lors des synchronisations
+effectuées hors du domicile.
+
+### Alternative : domaine public avec reverse proxy
+
+Un domaine public peut aussi pointer vers un reverse proxy HTTPS (Caddy, Nginx
+Proxy Manager ou équivalent), qui transfère les requêtes vers
+`http://127.0.0.1:3210`. Dans ce cas :
+
+- utiliser un certificat TLS publiquement valide ;
+- ne pas publier directement le port 3210 sur Internet ;
+- conserver l’authentification web SaveMarks ;
+- laisser `/api/pairing/exchange` atteindre SaveMarks sans une seconde page de
+  connexion ajoutée par le proxy : cet endpoint est déjà protégé par le code de
+  pairing à usage unique, la liste d’IDs d’extension et la limitation de débit ;
+- utiliser uniquement l’origine dans l’extension, par exemple
+  `https://savemarks.example.com`, sans chemin final.
+
+L’extension refuse volontairement une URL distante en HTTP. Une connexion HTTP
+reste possible pour `localhost`, les adresses privées et les noms `.local` sur
+le LAN.
+
+## 6. Pairer l’extension Chrome
 
 L’extension est toujours construite sur la machine de développement :
 
@@ -137,8 +182,9 @@ npm install
 npm run extension:build
 ```
 
-Charger `apps/extension/build` depuis `chrome://extensions`, puis définir
-`http://scarif.local:3210` comme URL du serveur.
+Charger `apps/extension/build` depuis `chrome://extensions`, puis définir l’URL
+du serveur : `http://scarif.local:3210` sur le LAN, ou l’URL HTTPS configurée à
+l’étape précédente pour un accès distant.
 
 Si l’ID de l’extension change, mettre à jour
 `SAVEMARKS_ALLOWED_EXTENSION_IDS` dans `.env`, puis recréer uniquement le

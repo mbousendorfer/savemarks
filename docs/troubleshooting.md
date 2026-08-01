@@ -73,6 +73,23 @@ En production :
 Ne pas ajouter le préfixe `chrome-extension://` dans `.env` : SaveMarks le fait
 lui-même.
 
+## Le pairing distant échoue
+
+- utiliser une URL HTTPS sans chemin, par exemple
+  `https://scarif.example-tailnet.ts.net` ;
+- ouvrir cette URL dans Chrome pour vérifier le certificat et la connectivité ;
+- avec Tailscale Serve, confirmer que Tailscale est connecté sur le NAS et sur
+  l’ordinateur, puis exécuter `tailscale serve status` sur le NAS ;
+- avec un reverse proxy public, vérifier qu’il transfère
+  `/api/pairing/exchange` vers SaveMarks sans redirection vers une seconde page
+  d’authentification ;
+- confirmer que l’ID affiché dans `chrome://extensions` correspond exactement à
+  `SAVEMARKS_ALLOWED_EXTENSION_IDS`, puis recréer le conteneur web ;
+- générer un nouveau code après chaque essai dépassant cinq minutes.
+
+Une URL distante en `http://` est rejetée intentionnellement. HTTPS protège le
+code de pairing et le token de l’extension pendant leur transport.
+
 ## Le code de pairing est invalide
 
 Il expire après cinq minutes et ne s’utilise qu’une fois. Générer un nouveau code

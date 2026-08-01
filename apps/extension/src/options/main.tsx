@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import {
+  normalizeServerUrl,
+  serverOriginPattern,
+} from "../lib/server-url";
 import { getSettings, setSettings } from "../lib/settings";
 import "../ui.css";
 
@@ -9,14 +13,6 @@ interface ImportState {
   pages: number;
   cursor?: string;
   error?: string;
-}
-
-function serverOriginPattern(value: string): string {
-  const url = new URL(value);
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Server URL must use HTTP or HTTPS");
-  }
-  return `${url.origin}/*`;
 }
 
 function Options() {
@@ -168,11 +164,12 @@ function Options() {
 
   async function pair(): Promise<void> {
     try {
-      const pattern = serverOriginPattern(serverUrl);
+      const normalizedServerUrl = normalizeServerUrl(serverUrl);
+      const pattern = serverOriginPattern(normalizedServerUrl);
       const granted = await chrome.permissions.request({ origins: [pattern] });
       if (!granted) throw new Error("Server access permission was not granted");
       const response = await fetch(
-        `${serverUrl.replace(/\/$/, "")}/api/pairing/exchange`,
+        `${normalizedServerUrl}/api/pairing/exchange`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -187,7 +184,11 @@ function Options() {
         throw new Error(error.error ?? "Pairing failed");
       }
       const payload = (await response.json()) as { token: string };
-      await setSettings({ serverUrl, apiToken: payload.token });
+      await setSettings({
+        serverUrl: normalizedServerUrl,
+        apiToken: payload.token,
+      });
+      setServerUrl(normalizedServerUrl);
       setPairingCode("");
       setPaired(true);
       setMessage("Extension paired successfully.");
@@ -220,9 +221,16 @@ function Options() {
           <label htmlFor="server">SaveMarks server URL</label>
           <input
             id="server"
+            type="url"
+            inputMode="url"
+            placeholder="https://savemarks.example.com"
             value={serverUrl}
             onChange={(event) => setServerUrl(event.target.value)}
           />
+          <span className="muted" style={{ fontSize: 12 }}>
+            Remote servers require HTTPS. Plain HTTP remains available on your
+            private LAN.
+          </span>
         </div>
         <div className="field" style={{ marginBottom: 14 }}>
           <label htmlFor="code">Eight-character pairing code</label>

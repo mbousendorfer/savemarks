@@ -49,6 +49,10 @@ keep first-run setup simple. Pairing still requires a short-lived, single-use
 code. Pairing fails for every other unlisted browser origin.
 Running over plain HTTP is acceptable only on a trusted private network; use a
 Tailscale HTTPS hostname when the local network is not trusted.
+The extension enforces HTTPS for remote hostnames and permits plain HTTP only
+for loopback, private IP ranges, link-local addresses, and `.local` names. It
+requests runtime access only to the normalized server origin selected during
+pairing; Chrome displays the corresponding host-permission prompt.
 
 Pairing code creation and exchange are rate limited per client address. JSON
 endpoints reject malformed and oversized bodies, mutable web endpoints require
