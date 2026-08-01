@@ -1,9 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SaveMarks",
   description: "Your private, local-first saved-post library",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 const themeScript = `
@@ -13,6 +19,10 @@ const themeScript = `
       ? preference
       : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = resolved;
+    var themeMeta = document.createElement("meta");
+    themeMeta.name = "theme-color";
+    themeMeta.content = resolved === "dark" ? "#0a0c0a" : "#f5f6f2";
+    document.head.appendChild(themeMeta);
   } catch (_) {}
 `;
 

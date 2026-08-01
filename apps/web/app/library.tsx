@@ -433,6 +433,7 @@ function Detail({
         aria-labelledby="bookmark-detail-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        <span className="sheet-handle" aria-hidden="true" />
         <button className="detail-close" onClick={onClose} aria-label="Close">
           <XIcon size={20} />
         </button>
@@ -590,7 +591,10 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="detail-backdrop" onMouseDown={onClose}>
+    <div
+      className="detail-backdrop pairing-backdrop"
+      onMouseDown={onClose}
+    >
       <section
         className="pairing-dialog"
         role="dialog"
@@ -598,6 +602,7 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
         aria-labelledby="pairing-dialog-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        <span className="sheet-handle" aria-hidden="true" />
         <button className="detail-close" onClick={onClose} aria-label="Close">
           <XIcon size={20} />
         </button>
@@ -671,6 +676,9 @@ export function Library({
             : "light"
           : themePreference;
       document.documentElement.dataset.theme = resolved;
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute("content", resolved === "dark" ? "#0a0c0a" : "#f5f6f2");
     };
     apply();
     window.localStorage.setItem("savemarks-theme", themePreference);
@@ -689,6 +697,15 @@ export function Library({
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
   }, []);
+
+  useEffect(() => {
+    if (!selected && !pairing) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [pairing, selected]);
 
   useEffect(() => {
     void fetch("/api/media/sync", { method: "POST" });
@@ -927,6 +944,12 @@ export function Library({
 
       <section className="library">
         <div className="workspace-bar">
+          <div className="mobile-brand" aria-label="SaveMarks">
+            <span className="brand-mark">
+              <BookmarksIcon size={18} weight="fill" />
+            </span>
+            <strong>SaveMarks</strong>
+          </div>
           <div className="workspace-path" aria-label="Current location">
             <span>~/savemarks</span>
             <strong>/{filter}</strong>
@@ -1150,6 +1173,27 @@ export function Library({
           </div>
         )}
       </section>
+
+      <nav className="mobile-dock" aria-label="Mobile library navigation">
+        {(
+          [
+            ["all", BookmarksIcon],
+            ["x", XLogoIcon],
+            ["instagram", InstagramLogoIcon],
+            ["archived", ArchiveIcon],
+          ] as const
+        ).map(([value, Icon]) => (
+          <button
+            key={value}
+            className={filter === value ? "active" : ""}
+            onClick={() => setFilter(value)}
+            aria-current={filter === value ? "page" : undefined}
+          >
+            <Icon size={20} weight={filter === value ? "fill" : "regular"} />
+            <span>{filterLabels[value]}</span>
+          </button>
+        ))}
+      </nav>
 
       {selected && (
         <Detail
