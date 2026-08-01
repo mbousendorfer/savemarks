@@ -6,7 +6,7 @@ import {
   mediaAssets,
   tags,
 } from "@savemarks/database";
-import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Library, type LibraryBookmark } from "./library";
 
 export const dynamic = "force-dynamic";
@@ -14,62 +14,72 @@ export const dynamic = "force-dynamic";
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ source?: string }>;
+  searchParams: Promise<{ source?: string; filter?: string }>;
 }) {
-  const { source } = await searchParams;
-  const initialSource =
-    source === "x" || source === "instagram" ? source : undefined;
-  const rows = await database()
-    .select({
-      id: bookmarks.id,
-      source: bookmarks.source,
-      sourceItemId: bookmarks.sourceItemId,
-      canonicalUrl: bookmarks.canonicalUrl,
-      contentType: bookmarks.contentType,
-      text: bookmarks.text,
-      caption: bookmarks.caption,
-      publishedAt: bookmarks.publishedAt,
-      savedAt: bookmarks.savedAt,
-      importedAt: bookmarks.importedAt,
-      archived: bookmarks.archived,
-      authorUsername: authors.username,
-      authorDisplayName: authors.displayName,
-      authorAvatarUrl: authors.avatarUrl,
-      mediaId: mediaAssets.id,
-      mediaUrl: mediaAssets.sourceUrl,
-      mediaType: mediaAssets.mimeType,
-      mediaWidth: mediaAssets.width,
-      mediaHeight: mediaAssets.height,
-      mediaPosition: mediaAssets.position,
-      mediaStatus: mediaAssets.status,
-      mediaLocalRelativePath: mediaAssets.localRelativePath,
-    })
-    .from(bookmarks)
-    .innerJoin(authors, eq(bookmarks.authorId, authors.id))
-    .leftJoin(mediaAssets, eq(mediaAssets.bookmarkId, bookmarks.id))
-    .orderBy(
-      sql`${bookmarks.savedAt} is null`,
-      desc(bookmarks.savedAt),
-      asc(bookmarks.createdAt),
-    );
-
-  const tagRows = await database()
-    .select({
-      bookmarkId: bookmarkTags.bookmarkId,
-      name: tags.name,
-    })
-    .from(bookmarkTags)
-    .innerJoin(tags, eq(bookmarkTags.tagId, tags.id));
-  const [readLater] = await database()
-    .select({ value: count() })
-    .from(bookmarks)
-    .where(
-      and(
-        eq(bookmarks.source, "web"),
-        eq(bookmarks.archived, false),
-        isNull(bookmarks.readAt),
+  const { source, filter } = await searchParams;
+  const initialFilter =
+    filter === "archived"
+      ? "archived"
+      : source === "x" || source === "instagram"
+        ? source
+        : undefined;
+  const db = database();
+  const [rows, tagRows, readLaterRows] = await Promise.all([
+    db
+      .select({
+        id: bookmarks.id,
+        source: bookmarks.source,
+        sourceItemId: bookmarks.sourceItemId,
+        canonicalUrl: bookmarks.canonicalUrl,
+        contentType: bookmarks.contentType,
+        text: bookmarks.text,
+        caption: bookmarks.caption,
+        publishedAt: bookmarks.publishedAt,
+        savedAt: bookmarks.savedAt,
+        importedAt: bookmarks.importedAt,
+        archived: bookmarks.archived,
+        authorUsername: authors.username,
+        authorDisplayName: authors.displayName,
+        authorAvatarUrl: authors.avatarUrl,
+        mediaId: mediaAssets.id,
+        mediaUrl: mediaAssets.sourceUrl,
+        mediaType: mediaAssets.mimeType,
+        mediaWidth: mediaAssets.width,
+        mediaHeight: mediaAssets.height,
+        mediaPosition: mediaAssets.position,
+        mediaStatus: mediaAssets.status,
+        mediaLocalRelativePath: mediaAssets.localRelativePath,
+      })
+      .from(bookmarks)
+      .innerJoin(authors, eq(bookmarks.authorId, authors.id))
+      .leftJoin(mediaAssets, eq(mediaAssets.bookmarkId, bookmarks.id))
+      .where(inArray(bookmarks.source, ["x", "instagram"]))
+      .orderBy(
+        sql`${bookmarks.savedAt} is null`,
+        desc(bookmarks.savedAt),
+        asc(bookmarks.createdAt),
       ),
-    );
+    db
+      .select({
+        bookmarkId: bookmarkTags.bookmarkId,
+        name: tags.name,
+      })
+      .from(bookmarkTags)
+      .innerJoin(tags, eq(bookmarkTags.tagId, tags.id))
+      .innerJoin(bookmarks, eq(bookmarkTags.bookmarkId, bookmarks.id))
+      .where(inArray(bookmarks.source, ["x", "instagram"])),
+    db
+      .select({ value: count() })
+      .from(bookmarks)
+      .where(
+        and(
+          eq(bookmarks.source, "web"),
+          eq(bookmarks.archived, false),
+          isNull(bookmarks.readAt),
+        ),
+      ),
+  ]);
+  const [readLater] = readLaterRows;
   const tagsByBookmark = new Map<string, string[]>();
   for (const row of tagRows) {
     const existing = tagsByBookmark.get(row.bookmarkId) ?? [];
@@ -139,7 +149,7 @@ export default async function LibraryPage({
     <Library
       initialBookmarks={[...byId.values()]}
       initialReadLaterCount={readLater?.value ?? 0}
-      initialSource={initialSource}
+      initialFilter={initialFilter}
     />
   );
 }

@@ -7,7 +7,7 @@ Container Registry :
 ghcr.io/mbousendorfer/savemarks:latest
 ```
 
-L’image supporte `linux/amd64` et `linux/arm64`. Il n’est pas nécessaire de
+L’image est publiée pour `linux/amd64` (x86-64). Il n’est pas nécessaire de
 cloner le dépôt ni d’installer Node.js sur le serveur Unraid.
 
 ## Ce qui est stocké sur l’hôte
@@ -68,6 +68,7 @@ POSTGRES_PASSWORD=<première-valeur>
 SAVEMARKS_TOKEN_PEPPER=<seconde-valeur>
 SAVEMARKS_WEB_USERNAME=savemarks
 SAVEMARKS_WEB_PASSWORD=<troisième-valeur>
+SAVEMARKS_BASE_URL=https://savemarks.example.com
 SAVEMARKS_ALLOWED_EXTENSION_IDS=<id-extension-chrome>
 POSTGRES_DATA_PATH=/mnt/user/appdata/savemarks/postgres
 SAVEMARKS_DATA_PATH=/mnt/user/appdata/savemarks/data
@@ -79,6 +80,12 @@ PGID=100
 possible de choisir un autre UID/GID si les partages utilisent d’autres
 permissions. Le fichier `.env` contient des secrets et ne doit pas être
 committé.
+
+`SAVEMARKS_BASE_URL` doit être l’adresse exacte ouverte dans le navigateur,
+sans chemin final. Sur le réseau local, utiliser par exemple
+`http://scarif.local:3210`. Derrière Tailscale Serve ou un reverse proxy,
+utiliser l’URL HTTPS publique. Cette valeur sécurise les écritures même quand
+le conteneur reçoit les requêtes en HTTP interne.
 
 À l’ouverture de la web app, le navigateur demandera ce nom d’utilisateur et
 ce mot de passe. Cette protection couvre également les médias locaux. Sur un

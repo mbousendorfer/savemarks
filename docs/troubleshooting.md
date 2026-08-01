@@ -77,6 +77,8 @@ lui-même.
 
 - utiliser une URL HTTPS sans chemin, par exemple
   `https://scarif.example-tailnet.ts.net` ;
+- définir cette même origine dans `SAVEMARKS_BASE_URL`, puis recréer le
+  conteneur web ;
 - ouvrir cette URL dans Chrome pour vérifier le certificat et la connectivité ;
 - avec Tailscale Serve, confirmer que Tailscale est connecté sur le NAS et sur
   l’ordinateur, puis exécuter `tailscale serve status` sur le NAS ;

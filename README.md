@@ -3,12 +3,11 @@
 SaveMarks est une bibliothèque locale et auto-hébergée pour les favoris X, les
 publications enregistrées sur Instagram et les liens à lire plus tard.
 
-> **État actuel : bibliothèque X utilisable.** L’application affiche les
-> bookmarks stockés dans PostgreSQL, avec recherche, filtres, vues grille/liste
-> et fiche détaillée. Les médias X sont archivés sur disque et les bookmarks
-> peuvent être taggés. L’extension Chromium synchronise les nouvelles pages X et
-> sait importer l’historique. L’importeur Instagram est implémenté mais attend
-> encore une réponse Saved valide de la session réelle pour sa validation finale.
+> **État actuel : X, Instagram et Web sont utilisables.** L’application affiche
+> les éléments stockés dans PostgreSQL avec recherche, tris, filtres, vues
+> grille/liste et fiches détaillées. Les médias sociaux et aperçus Web sont
+> archivés sur disque. L’extension Chromium synchronise les nouveaux favoris et
+> sait importer les historiques X et Instagram depuis leurs pages dédiées.
 
 ## Démarrage rapide
 

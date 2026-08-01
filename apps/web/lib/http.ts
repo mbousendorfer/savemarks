@@ -16,15 +16,28 @@ export async function readJson(
     };
   }
 
-  const body = await request.text();
-  if (new TextEncoder().encode(body).byteLength > maxBytes) {
-    return {
-      ok: false,
-      response: Response.json(
-        { error: "Request body too large" },
-        { status: 413 },
-      ),
-    };
+  const reader = request.body?.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let body = "";
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return {
+          ok: false,
+          response: Response.json(
+            { error: "Request body too large" },
+            { status: 413 },
+          ),
+        };
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
   }
   try {
     return { ok: true, value: JSON.parse(body) };
@@ -66,6 +79,11 @@ export function rateLimit(
   if (buckets.size > 2_000) {
     for (const [entryKey, entry] of buckets) {
       if (entry.resetAt <= now) buckets.delete(entryKey);
+    }
+    while (buckets.size > 2_000) {
+      const oldest = buckets.keys().next().value as string | undefined;
+      if (!oldest) break;
+      buckets.delete(oldest);
     }
   }
   if (bucket.count <= limit) return undefined;

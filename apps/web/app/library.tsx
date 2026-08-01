@@ -25,8 +25,9 @@ import {
   XIcon,
   XLogoIcon,
 } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchJson } from "./client-http";
+import { MobileDock } from "./mobile-dock";
 
 const INITIAL_RENDER_COUNT = 48;
 const RENDER_BATCH_SIZE = 48;
@@ -196,27 +197,13 @@ function matchesFilter(bookmark: LibraryBookmark, filter: Filter): boolean {
 
 function SourceMark({ source }: { source: Source }) {
   return source === "x" ? (
-    <XLogoIcon
-      className="source-icon source-icon--x"
-      size={13}
-      weight="bold"
-    />
+    <XLogoIcon className="source-icon" size={15} weight="regular" />
   ) : (
-    <InstagramLogoIcon
-      className="source-icon"
-      size={14}
-      weight="bold"
-    />
+    <InstagramLogoIcon className="source-icon" size={15} weight="bold" />
   );
 }
 
-function Avatar({
-  url,
-  username,
-}: {
-  url: string | null;
-  username: string;
-}) {
+function Avatar({ url, username }: { url: string | null; username: string }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => setFailed(false), [url]);
@@ -311,7 +298,9 @@ function BookmarkCard({
           <TagIcon size={15} />
         </button>
         <button
-          aria-label={bookmark.archived ? "Restore bookmark" : "Archive bookmark"}
+          aria-label={
+            bookmark.archived ? "Restore bookmark" : "Archive bookmark"
+          }
           title={bookmark.archived ? "Restore" : "Archive"}
           disabled={busy}
           onClick={() => {
@@ -598,7 +587,6 @@ function Detail({
           </header>
           {copy && (
             <div className="detail-copy-frame">
-              <span aria-hidden="true" />
               <p className="detail-copy">{copy}</p>
             </div>
           )}
@@ -725,10 +713,7 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div
-      className="detail-backdrop pairing-backdrop"
-      onMouseDown={onClose}
-    >
+    <div className="detail-backdrop pairing-backdrop" onMouseDown={onClose}>
       <section
         className="pairing-dialog"
         role="dialog"
@@ -788,7 +773,9 @@ function DeleteDialog({
         aria-describedby="delete-dialog-description"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <span className="confirm-icon"><TrashIcon size={20} /></span>
+        <span className="confirm-icon">
+          <TrashIcon size={20} />
+        </span>
         <p className="eyebrow">Permanent action</p>
         <h2 id="delete-dialog-title">
           Delete {count} {count === 1 ? "bookmark" : "bookmarks"}?
@@ -798,8 +785,14 @@ function DeleteDialog({
           when no other bookmark uses it.
         </p>
         <div className="confirm-actions">
-          <button disabled={busy} onClick={onCancel}>Cancel</button>
-          <button className="confirm-delete" disabled={busy} onClick={onConfirm}>
+          <button disabled={busy} onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            className="confirm-delete"
+            disabled={busy}
+            onClick={onConfirm}
+          >
             <TrashIcon size={16} />
             {busy ? "Deleting…" : "Delete permanently"}
           </button>
@@ -812,15 +805,14 @@ function DeleteDialog({
 export function Library({
   initialBookmarks,
   initialReadLaterCount,
-  initialSource,
+  initialFilter,
 }: {
   initialBookmarks: LibraryBookmark[];
   initialReadLaterCount: number;
-  initialSource?: Source | undefined;
+  initialFilter?: Filter | undefined;
 }) {
-  const router = useRouter();
   const [bookmarks, setBookmarks] = useState(initialBookmarks);
-  const [filter, setFilter] = useState<Filter>(initialSource ?? "all");
+  const [filter, setFilter] = useState<Filter>(initialFilter ?? "all");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("grid");
   const [sort, setSort] = useState<Sort>("saved-newest");
@@ -839,6 +831,10 @@ export function Library({
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDER_COUNT);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setFilter(initialFilter ?? "all");
+  }, [initialFilter]);
 
   useEffect(() => setBookmarks(initialBookmarks), [initialBookmarks]);
 
@@ -910,27 +906,39 @@ export function Library({
     setBulkBusy(true);
     setBulkError(undefined);
     try {
-      const response = await fetch("/api/bookmarks/bulk", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw new Error("The bookmark action could not be completed");
-      const result = (await response.json()) as { ids: string[] };
+      const result = await fetchJson<{ ids: string[] }>(
+        "/api/bookmarks/bulk",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        "The bookmark action could not be completed.",
+      );
       const affected = new Set(result.ids);
       if (payload.action === "delete") {
-        setBookmarks((current) => current.filter((item) => !affected.has(item.id)));
-        setSelected((current) => current && affected.has(current.id) ? undefined : current);
+        setBookmarks((current) =>
+          current.filter((item) => !affected.has(item.id)),
+        );
+        setSelected((current) =>
+          current && affected.has(current.id) ? undefined : current,
+        );
       } else if (payload.action === "archive") {
-        setBookmarks((current) => current.map((item) =>
-          affected.has(item.id) ? { ...item, archived: payload.archived } : item,
-        ));
+        setBookmarks((current) =>
+          current.map((item) =>
+            affected.has(item.id)
+              ? { ...item, archived: payload.archived }
+              : item,
+          ),
+        );
       } else {
-        setBookmarks((current) => current.map((item) =>
-          affected.has(item.id) && !item.tags.includes(payload.tag)
-            ? { ...item, tags: [...item.tags, payload.tag].sort() }
-            : item,
-        ));
+        setBookmarks((current) =>
+          current.map((item) =>
+            affected.has(item.id) && !item.tags.includes(payload.tag)
+              ? { ...item, tags: [...item.tags, payload.tag].sort() }
+              : item,
+          ),
+        );
       }
       setSelectedIds((current) => {
         const next = new Set(current);
@@ -940,20 +948,14 @@ export function Library({
       setBulkTag("");
       return true;
     } catch (error) {
-      setBulkError(error instanceof Error ? error.message : "Bookmark action failed");
+      setBulkError(
+        error instanceof Error ? error.message : "Bookmark action failed",
+      );
       return false;
     } finally {
       setBulkBusy(false);
     }
   }
-
-  useEffect(() => {
-    void fetch("/api/media/sync", { method: "POST" });
-    const refresh = window.setTimeout(() => {
-      if (document.visibilityState === "visible") router.refresh();
-    }, 30_000);
-    return () => window.clearTimeout(refresh);
-  }, [router]);
 
   const allTags = useMemo(
     () => [...new Set(bookmarks.flatMap((bookmark) => bookmark.tags))].sort(),
@@ -1143,28 +1145,28 @@ export function Library({
           </div>
           <div className="sidebar-section">
             <p>Formats</p>
-          {(
-            [
-              ["images", ImageIcon],
-              ["videos", VideoCameraIcon],
-              ["carousels", GridFourIcon],
-              ["reels", VideoCameraIcon],
-              ["text", TextTIcon],
-            ] as const
-          ).map(([value, Icon]) => (
-            <button
-              key={value}
-              className={filter === value ? "active" : ""}
-              onClick={() => setFilter(value)}
-              aria-current={filter === value ? "page" : undefined}
-              aria-label={filterLabels[value]}
-              title={filterLabels[value]}
-            >
-              <Icon size={16} />
-              <span>{filterLabels[value]}</span>
-              <em>{counts[value]}</em>
-            </button>
-          ))}
+            {(
+              [
+                ["images", ImageIcon],
+                ["videos", VideoCameraIcon],
+                ["carousels", GridFourIcon],
+                ["reels", VideoCameraIcon],
+                ["text", TextTIcon],
+              ] as const
+            ).map(([value, Icon]) => (
+              <button
+                key={value}
+                className={filter === value ? "active" : ""}
+                onClick={() => setFilter(value)}
+                aria-current={filter === value ? "page" : undefined}
+                aria-label={filterLabels[value]}
+                title={filterLabels[value]}
+              >
+                <Icon size={16} />
+                <span>{filterLabels[value]}</span>
+                <em>{counts[value]}</em>
+              </button>
+            ))}
           </div>
         </nav>
         <div className="sidebar-footer">
@@ -1243,7 +1245,12 @@ export function Library({
             </div>
             <div>
               <span>Media</span>
-              <strong>{counts.images + counts.videos + counts.carousels + counts.reels}</strong>
+              <strong>
+                {counts.images +
+                  counts.videos +
+                  counts.carousels +
+                  counts.reels}
+              </strong>
             </div>
             <div>
               <span>Tags</span>
@@ -1450,14 +1457,21 @@ export function Library({
             <span>{selectedIds.size}</span>
             <div>
               <strong>Selected</strong>
-              <small>{selectedIds.size === visible.length ? "All visible" : "Custom selection"}</small>
+              <small>
+                {selectedIds.size === visible.length
+                  ? "All visible"
+                  : "Custom selection"}
+              </small>
             </div>
           </div>
           <form
             className="bulk-tag"
             onSubmit={(event) => {
               event.preventDefault();
-              const value = bulkTag.trim().replace(/^#/, "").toLocaleLowerCase();
+              const value = bulkTag
+                .trim()
+                .replace(/^#/, "")
+                .toLocaleLowerCase();
               if (!value) return;
               void runBulkAction({
                 action: "add_tag",
@@ -1513,30 +1527,14 @@ export function Library({
         </aside>
       )}
 
-      <nav className="mobile-dock" aria-label="Mobile library navigation">
-        <a href="/web">
-          <LinkIcon size={20} />
-          <span>Web</span>
-        </a>
-        {(
-          [
-            ["all", BookmarksIcon],
-            ["x", XLogoIcon],
-            ["instagram", InstagramLogoIcon],
-            ["archived", ArchiveIcon],
-          ] as const
-        ).map(([value, Icon]) => (
-          <button
-            key={value}
-            className={filter === value ? "active" : ""}
-            onClick={() => setFilter(value)}
-            aria-current={filter === value ? "page" : undefined}
-          >
-            <Icon size={20} weight={filter === value ? "fill" : "regular"} />
-            <span>{filterLabels[value]}</span>
-          </button>
-        ))}
-      </nav>
+      <MobileDock
+        active={
+          filter === "x" || filter === "instagram" || filter === "archived"
+            ? filter
+            : "all"
+        }
+        onSelect={setFilter}
+      />
 
       {selected && (
         <Detail

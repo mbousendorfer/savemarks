@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { readJson } from "../../../../lib/http";
 import { deleteBookmarks } from "../../../../lib/bookmark-actions";
+import { isSameOriginRequest } from "../../../../lib/request-origin";
 
 const updateBookmarkSchema = z
   .object({ archived: z.boolean().optional(), read: z.boolean().optional() })
@@ -13,8 +14,7 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   const json = await readJson(request, 1_024);
@@ -54,8 +54,7 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   const { id } = await context.params;

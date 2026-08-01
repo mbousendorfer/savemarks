@@ -61,6 +61,11 @@ same-origin requests, and responses include a restrictive Content Security
 Policy, clickjacking protection, MIME sniffing protection, and a locked-down
 browser permissions policy.
 
+Behind an HTTPS reverse proxy, set `SAVEMARKS_BASE_URL` to the exact public
+origin. Same-origin validation accepts that configured origin and standard
+forwarded host/protocol values while continuing to reject unrelated browser
+origins.
+
 ## Redaction and fixtures
 
 Diagnostics is explicit opt-in and bounded. Exports contain URLs, operation
@@ -71,7 +76,7 @@ field shapes and is unused by default.
 
 ## Media validation
 
-The media downloader enforces byte limits, allowlists source CDN hostnames and
+The media downloader enforces byte limits, streams large files to disk, allowlists source CDN hostnames and
 MIME types, validates every redirect, and caps redirect counts. Paths derive
 only from SHA-256 and server-selected extensions, and traversal-safe resolution
 keeps every file below `MEDIA_DATA_PATH`. X media is accepted only from

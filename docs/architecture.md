@@ -2,10 +2,9 @@
 
 ## Current milestone boundary
 
-The local X workflow is implemented end to end: observation, normalization,
-historical pagination, PostgreSQL ingestion, and the visual library. The
-Instagram adapter remains fail-closed until sanitized live captures verify its
-schema.
+The X and Instagram workflows cover observation, normalization, historical
+pagination, PostgreSQL ingestion, and the visual library. Their adapters remain
+fail-closed when a source response no longer matches its validated schema.
 
 ## Components
 
@@ -74,6 +73,12 @@ Read-later links use a durable PostgreSQL enrichment queue. HTML and preview
 images are fetched only from public HTTP(S) destinations with pinned DNS,
 redirect validation, byte/time limits, and private-network blocking. Preview
 images are stored below `web/media/pictures`; article HTML is not archived.
+
+The standalone Node process runs idempotent background workers for media and
+read-later enrichment. They poll durable PostgreSQL state, resume after a
+container restart, and never depend on a browser page remaining open. Large
+social videos are streamed directly to a temporary file while their byte limit
+and SHA-256 digest are computed, avoiding a full in-memory copy.
 
 ## Unraid deployment
 

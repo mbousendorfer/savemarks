@@ -7,23 +7,32 @@ import {
   webPages,
 } from "@savemarks/database";
 import { readLaterIngestSchema } from "@savemarks/shared";
-import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { authenticate } from "../../../lib/auth";
 import { corsHeaders, originAllowed } from "../../../lib/cors";
 import { rateLimit, readJson } from "../../../lib/http";
 import { startReadLaterEnrichment } from "../../../lib/read-later-enrichment";
 import { ingestReadLater } from "../../../lib/read-later";
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
-}
+import { isSameOriginRequest } from "../../../lib/request-origin";
 
 async function authorizeWrite(request: Request) {
   if (request.headers.get("authorization")?.startsWith("Bearer ")) {
     return originAllowed(request) && (await authenticate(request));
   }
-  return sameOrigin(request);
+  return isSameOriginRequest(request);
 }
 
 export async function OPTIONS(request: Request) {
@@ -58,7 +67,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   void startReadLaterEnrichment(20);
@@ -68,7 +77,10 @@ export async function GET(request: Request) {
   const query = url.searchParams.get("q")?.trim().slice(0, 200);
   const tag = url.searchParams.get("tag")?.trim().slice(0, 50);
   const cursor = url.searchParams.get("cursor");
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 30));
+  const limit = Math.min(
+    100,
+    Math.max(1, Number(url.searchParams.get("limit")) || 30),
+  );
   let cursorDate: Date | undefined;
   let cursorId: string | undefined;
   if (cursor) {
@@ -85,9 +97,15 @@ export async function GET(request: Request) {
 
   const conditions = [eq(bookmarks.source, "web")];
   if (status === "unread") {
-    conditions.push(sql`${bookmarks.readAt} is null`, eq(bookmarks.archived, false));
+    conditions.push(
+      sql`${bookmarks.readAt} is null`,
+      eq(bookmarks.archived, false),
+    );
   } else if (status === "read") {
-    conditions.push(sql`${bookmarks.readAt} is not null`, eq(bookmarks.archived, false));
+    conditions.push(
+      sql`${bookmarks.readAt} is not null`,
+      eq(bookmarks.archived, false),
+    );
   } else if (status === "archived") {
     conditions.push(eq(bookmarks.archived, true));
   } else {
@@ -170,7 +188,10 @@ export async function GET(request: Request) {
     : [[], []];
   const tagsById = new Map<string, string[]>();
   for (const row of tagRows) {
-    tagsById.set(row.bookmarkId, [...(tagsById.get(row.bookmarkId) ?? []), row.name]);
+    tagsById.set(row.bookmarkId, [
+      ...(tagsById.get(row.bookmarkId) ?? []),
+      row.name,
+    ]);
   }
   const mediaById = new Map<string, string>();
   for (const row of mediaRows) {
@@ -193,11 +214,15 @@ export async function GET(request: Request) {
       savedAt: item.savedAt?.toISOString() ?? new Date(0).toISOString(),
       readAt: item.readAt?.toISOString() ?? null,
       tags: tagsById.get(item.id)?.sort() ?? [],
-      imageUrl: mediaById.has(item.id) ? `/api/media/${mediaById.get(item.id)}` : null,
+      imageUrl: mediaById.has(item.id)
+        ? `/api/media/${mediaById.get(item.id)}`
+        : null,
     })),
     nextCursor:
       rows.length > limit && last?.savedAt
-        ? Buffer.from(`${last.savedAt.toISOString()}|${last.id}`).toString("base64url")
+        ? Buffer.from(`${last.savedAt.toISOString()}|${last.id}`).toString(
+            "base64url",
+          )
         : null,
     unreadCount: unread?.value ?? 0,
   });

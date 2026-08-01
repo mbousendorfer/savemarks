@@ -6,7 +6,6 @@ import { openDB, type DBSchema } from "idb";
 
 interface QueueItemBase {
   id: string;
-  mediaTransferState: "pending" | "server-download" | "browser-upload" | "done";
   retryCount: number;
   nextRetryAt: string;
   lastError?: string;
@@ -19,7 +18,13 @@ export type QueueItem = QueueItemBase &
     | { kind: "read_later"; item: ReadLaterCapture }
   );
 
-type StoredQueueItem = QueueItem | (QueueItemBase & { bookmark: NormalizedBookmark; kind?: undefined });
+type StoredQueueItem =
+  | QueueItem
+  | (QueueItemBase & {
+      bookmark: NormalizedBookmark;
+      kind?: undefined;
+      mediaTransferState?: string;
+    });
 
 interface SaveMarksDatabase extends DBSchema {
   queue: {
@@ -40,25 +45,29 @@ const db = openDB<SaveMarksDatabase>("savemarks-extension", 2, {
 
 export async function enqueue(bookmark: NormalizedBookmark): Promise<void> {
   const now = new Date().toISOString();
-  await (await db).put("queue", {
+  await (
+    await db
+  ).put("queue", {
     id: crypto.randomUUID(),
     kind: "social_bookmark",
     bookmark,
-    mediaTransferState: "pending",
     retryCount: 0,
     nextRetryAt: now,
     createdAt: now,
   });
 }
 
-export async function enqueueReadLater(item: ReadLaterCapture): Promise<string> {
+export async function enqueueReadLater(
+  item: ReadLaterCapture,
+): Promise<string> {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
-  await (await db).put("queue", {
+  await (
+    await db
+  ).put("queue", {
     id,
     kind: "read_later",
     item,
-    mediaTransferState: "pending",
     retryCount: 0,
     nextRetryAt: now,
     createdAt: now,
@@ -77,7 +86,7 @@ export async function queueStats() {
 export async function flushQueue(
   serverUrl: string,
   apiToken: string,
-): Promise<number> {
+): Promise<{ processed: number; succeeded: number; failed: number }> {
   const database = await db;
   const due = await database.getAllFromIndex(
     "queue",
@@ -85,29 +94,36 @@ export async function flushQueue(
     IDBKeyRange.upperBound(new Date().toISOString()),
     25,
   );
+  let succeeded = 0;
+  let failed = 0;
   for (const item of due) {
     try {
       const isReadLater = item.kind === "read_later";
-      const response = await fetch(`${serverUrl.replace(/\/$/, "")}${isReadLater ? "/api/read-later" : "/api/bookmarks"}`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${apiToken}`,
-          "content-type": "application/json",
+      const response = await fetch(
+        `${serverUrl.replace(/\/$/, "")}${isReadLater ? "/api/read-later" : "/api/bookmarks"}`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${apiToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            clientItemId: item.id,
+            ...(isReadLater
+              ? { mode: "save", item: item.item }
+              : { bookmark: item.bookmark }),
+          }),
         },
-        body: JSON.stringify({
-          clientItemId: item.id,
-          ...(isReadLater
-            ? { mode: "save", item: item.item }
-            : { bookmark: item.bookmark }),
-        }),
-      });
+      );
       if (response.status === 401 || response.status === 403) {
         throw new Error("PAIRING_REQUIRED");
       }
       if (response.status === 429) throw new Error("RATE_LIMITED");
       if (!response.ok) throw new Error(`SERVER_${response.status}`);
       await database.delete("queue", item.id);
+      succeeded += 1;
     } catch (error) {
+      failed += 1;
       const retryCount = item.retryCount + 1;
       const delay = Math.min(6 * 60 * 60_000, 15_000 * 2 ** retryCount);
       await database.put("queue", {
@@ -124,5 +140,5 @@ export async function flushQueue(
       }
     }
   }
-  return due.length;
+  return { processed: due.length, succeeded, failed };
 }

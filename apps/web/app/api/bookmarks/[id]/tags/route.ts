@@ -2,6 +2,7 @@ import { bookmarkTags, bookmarks, database, tags } from "@savemarks/database";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { readJson } from "../../../../../lib/http";
+import { isSameOriginRequest } from "../../../../../lib/request-origin";
 
 const updateTagsSchema = z.object({
   tags: z
@@ -23,8 +24,7 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   const json = await readJson(request, 8_192);

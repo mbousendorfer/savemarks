@@ -1,11 +1,11 @@
 import { retryReadLaterEnrichment } from "../../../../../lib/read-later-enrichment";
+import { isSameOriginRequest } from "../../../../../lib/request-origin";
 
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   const { id } = await context.params;

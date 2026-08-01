@@ -1,4 +1,5 @@
 FROM node:22-alpine AS base
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 
 FROM base AS dependencies
@@ -21,6 +22,7 @@ RUN npx --no-install esbuild packages/database/src/migrate.ts \
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 RUN apk add --no-cache su-exec
 COPY --from=build /app/apps/web/.next/standalone ./

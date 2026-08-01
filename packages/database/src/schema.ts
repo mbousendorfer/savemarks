@@ -85,12 +85,16 @@ export const bookmarks = pgTable(
     updatedAt,
   },
   (table) => [
-    unique("bookmarks_source_item_unique").on(
-      table.source,
-      table.sourceItemId,
-    ),
+    unique("bookmarks_source_item_unique").on(table.source, table.sourceItemId),
     index("bookmarks_normalized_url_hash_idx").on(table.normalizedUrlHash),
     index("bookmarks_saved_at_idx").on(table.savedAt),
+    index("bookmarks_source_saved_idx").on(table.source, table.savedAt),
+    index("bookmarks_read_later_status_idx").on(
+      table.source,
+      table.archived,
+      table.readAt,
+      table.savedAt,
+    ),
   ],
 );
 
@@ -148,6 +152,7 @@ export const mediaAssets = pgTable(
   },
   (table) => [
     index("media_assets_bookmark_idx").on(table.bookmarkId),
+    index("media_assets_sync_queue_idx").on(table.status, table.createdAt),
     unique("media_assets_sha256_unique").on(table.sha256),
   ],
 );
@@ -191,9 +196,7 @@ export const bookmarkSourceCollections = pgTable(
       .notNull()
       .references(() => sourceCollections.id, { onDelete: "cascade" }),
   },
-  (table) => [
-    primaryKey({ columns: [table.bookmarkId, table.collectionId] }),
-  ],
+  (table) => [primaryKey({ columns: [table.bookmarkId, table.collectionId] })],
 );
 
 export const bookmarkLocalCollections = pgTable(
@@ -206,9 +209,7 @@ export const bookmarkLocalCollections = pgTable(
       .notNull()
       .references(() => localCollections.id, { onDelete: "cascade" }),
   },
-  (table) => [
-    primaryKey({ columns: [table.bookmarkId, table.collectionId] }),
-  ],
+  (table) => [primaryKey({ columns: [table.bookmarkId, table.collectionId] })],
 );
 
 export const tags = pgTable("tags", {
@@ -250,7 +251,9 @@ export const syncRuns = pgTable("sync_runs", {
   importedCount: integer("imported_count").notNull().default(0),
   duplicateCount: integer("duplicate_count").notNull().default(0),
   skippedCount: integer("skipped_count").notNull().default(0),
-  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
@@ -282,12 +285,9 @@ export const pairingCodes = pgTable("pairing_codes", {
   createdAt,
 });
 
-export const developmentDebugPayloads = pgTable(
-  "development_debug_payloads",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    source: sourceEnum("source").notNull(),
-    fieldShape: jsonb("field_shape").notNull(),
-    createdAt,
-  },
-);
+export const developmentDebugPayloads = pgTable("development_debug_payloads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  source: sourceEnum("source").notNull(),
+  fieldShape: jsonb("field_shape").notNull(),
+  createdAt,
+});

@@ -6,8 +6,9 @@ import {
   sha256,
 } from "@savemarks/database";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, normalize } from "node:path";
+import { createHash } from "node:crypto";
+import { mkdir, open, rename, unlink, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, normalize } from "node:path";
 import { fetchPublicResource } from "./public-fetch";
 
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -44,7 +45,10 @@ export function mediaRoot(): string {
   return normalize(`${process.cwd()}/../../${configured}`);
 }
 
-function allowedHost(source: PendingMedia["source"], hostname: string): boolean {
+function allowedHost(
+  source: PendingMedia["source"],
+  hostname: string,
+): boolean {
   const host = hostname.toLowerCase();
   if (source === "x") {
     return host === "pbs.twimg.com" || host === "video.twimg.com";
@@ -82,6 +86,57 @@ async function safeFetch(
   throw new Error("Too many media redirects");
 }
 
+export async function streamToFile(
+  response: Response,
+  destination: string,
+  maxBytes: number,
+): Promise<{ hash: string; size: number }> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new Error(
+      `Media exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit`,
+    );
+  }
+  if (!response.body) throw new Error("Media response has no body");
+
+  const reader = response.body.getReader();
+  const file = await open(destination, "w", 0o600);
+  const digest = createHash("sha256");
+  let size = 0;
+  let failed = false;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        throw new Error(
+          `Media exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit`,
+        );
+      }
+      digest.update(value);
+      let offset = 0;
+      while (offset < value.byteLength) {
+        const { bytesWritten } = await file.write(
+          value,
+          offset,
+          value.byteLength - offset,
+        );
+        if (bytesWritten === 0) throw new Error("Media file write stalled");
+        offset += bytesWritten;
+      }
+    }
+    return { hash: digest.digest("hex"), size };
+  } catch (error) {
+    failed = true;
+    throw error;
+  } finally {
+    await file.close();
+    if (failed) await unlink(destination).catch(() => undefined);
+  }
+}
+
 async function storeMedia(item: PendingMedia): Promise<void> {
   const db = database();
   await db
@@ -90,10 +145,11 @@ async function storeMedia(item: PendingMedia): Promise<void> {
     .where(eq(mediaAssets.id, item.id));
 
   try {
-    let bytes: Uint8Array;
     let responseMimeType: string;
+    let bytes: Uint8Array | undefined;
+    let response: Response | undefined;
     if (item.source === "web") {
-      const response = await fetchPublicResource(item.sourceUrl, {
+      const fetched = await fetchPublicResource(item.sourceUrl, {
         maxBytes: 10 * 1024 * 1024,
         timeoutMs: 8_000,
         acceptedTypes: [
@@ -104,15 +160,15 @@ async function storeMedia(item: PendingMedia): Promise<void> {
           "image/avif",
         ],
       });
-      bytes = response.bytes;
-      responseMimeType = response.contentType;
+      bytes = fetched.bytes;
+      responseMimeType = fetched.contentType;
     } else {
-      const response = await safeFetch(item.source, item.sourceUrl);
+      response = await safeFetch(item.source, item.sourceUrl);
       if (!response.ok || !response.body) {
         throw new Error(`Media server returned HTTP ${response.status}`);
       }
-      responseMimeType = response.headers.get("content-type") ?? item.mimeType ?? "";
-      bytes = new Uint8Array(await response.arrayBuffer());
+      responseMimeType =
+        response.headers.get("content-type") ?? item.mimeType ?? "";
     }
     const mimeType = responseMimeType.split(";")[0]?.trim().toLowerCase();
     if (!mimeType || !MIME_EXTENSIONS[mimeType]) {
@@ -121,21 +177,25 @@ async function storeMedia(item: PendingMedia): Promise<void> {
     const maxBytes = mimeType.startsWith("video/")
       ? MAX_VIDEO_BYTES
       : MAX_IMAGE_BYTES;
-    if (bytes.byteLength > maxBytes) {
-      throw new Error(`Media exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit`);
+    if (bytes && bytes.byteLength > maxBytes) {
+      throw new Error(
+        `Media exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit`,
+      );
     }
 
-    const hash = sha256(bytes);
     const kind = mimeType.startsWith("video/") ? "videos" : "pictures";
-    const relativePath = `${item.source}/media/${kind}/${hash}${MIME_EXTENSIONS[mimeType]}`;
-    const destination = resolveMediaPath(mediaRoot(), relativePath);
     const temporary = resolveMediaPath(
       mediaRoot(),
-      `.tmp/${item.id}${extname(destination)}`,
+      `.tmp/${item.id}${MIME_EXTENSIONS[mimeType]}`,
     );
     await mkdir(dirname(temporary), { recursive: true });
+    const stored = bytes
+      ? { hash: sha256(bytes), size: bytes.byteLength }
+      : await streamToFile(response!, temporary, maxBytes);
+    const relativePath = `${item.source}/media/${kind}/${stored.hash}${MIME_EXTENSIONS[mimeType]}`;
+    const destination = resolveMediaPath(mediaRoot(), relativePath);
     await mkdir(dirname(destination), { recursive: true });
-    await writeFile(temporary, bytes);
+    if (bytes) await writeFile(temporary, bytes, { mode: 0o600 });
     await rename(temporary, destination).catch(async (error: unknown) => {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
       await unlink(temporary).catch(() => undefined);
@@ -144,14 +204,19 @@ async function storeMedia(item: PendingMedia): Promise<void> {
     const [existing] = await db
       .select({ id: mediaAssets.id })
       .from(mediaAssets)
-      .where(and(eq(mediaAssets.sha256, hash), inArray(mediaAssets.status, ["stored"])))
+      .where(
+        and(
+          eq(mediaAssets.sha256, stored.hash),
+          inArray(mediaAssets.status, ["stored"]),
+        ),
+      )
       .limit(1);
     await db
       .update(mediaAssets)
       .set({
-        sha256: existing?.id === item.id || !existing ? hash : null,
+        sha256: existing?.id === item.id || !existing ? stored.hash : null,
         mimeType,
-        fileSize: bytes.byteLength,
+        fileSize: stored.size,
         localRelativePath: relativePath,
         status: "stored",
         failureReason: null,
@@ -164,7 +229,9 @@ async function storeMedia(item: PendingMedia): Promise<void> {
       .set({
         status: "failed",
         failureReason:
-          error instanceof Error ? error.message.slice(0, 1_000) : "Download failed",
+          error instanceof Error
+            ? error.message.slice(0, 1_000)
+            : "Download failed",
         updatedAt: new Date(),
       })
       .where(eq(mediaAssets.id, item.id));

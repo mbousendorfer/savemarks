@@ -92,6 +92,31 @@ export async function POST(request: Request) {
           updatedAt: new Date(),
         })
         .where(eq(bookmarks.id, existing.id));
+      if (item.media.length > 0) {
+        const storedMedia = await tx
+          .select({ sourceUrl: mediaAssets.sourceUrl })
+          .from(mediaAssets)
+          .where(eq(mediaAssets.bookmarkId, existing.id));
+        const storedUrls = new Set(storedMedia.map((media) => media.sourceUrl));
+        const missingMedia = item.media.filter(
+          (media) => !storedUrls.has(media.sourceUrl),
+        );
+        if (missingMedia.length > 0) {
+          await tx.insert(mediaAssets).values(
+            missingMedia.map((media) => ({
+              bookmarkId: existing.id,
+              sourceUrl: media.sourceUrl,
+              mimeType: media.mimeType,
+              width: media.width,
+              height: media.height,
+              durationSeconds: media.durationSeconds
+                ? Math.round(media.durationSeconds)
+                : undefined,
+              position: media.position,
+            })),
+          );
+        }
+      }
       return { duplicate: true, id: existing.id };
     }
 

@@ -15,6 +15,13 @@
       "when": 1785602389614,
       "tag": "0001_glamorous_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785610326738,
+      "tag": "0002_flashy_vanisher",
+      "breakpoints": true
     }
   ]
 }

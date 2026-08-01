@@ -5,10 +5,10 @@ import {
 import { readJson } from "../../../../lib/http";
 import { startReadLaterEnrichment } from "../../../../lib/read-later-enrichment";
 import { ingestReadLater } from "../../../../lib/read-later";
+import { isSameOriginRequest } from "../../../../lib/request-origin";
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   const json = await readJson(request, 1_000_000);
@@ -42,7 +42,10 @@ export async function POST(request: Request) {
       results.push({
         row: entry.row,
         status: "invalid",
-        error: error instanceof Error ? error.message.slice(0, 500) : "Import failed",
+        error:
+          error instanceof Error
+            ? error.message.slice(0, 500)
+            : "Import failed",
       });
     }
   }

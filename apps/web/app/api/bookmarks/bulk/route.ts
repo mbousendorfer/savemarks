@@ -4,11 +4,14 @@ import {
   deleteBookmarks,
 } from "../../../../lib/bookmark-actions";
 import { readJson } from "../../../../lib/http";
+import { isSameOriginRequest } from "../../../../lib/request-origin";
 import { z } from "zod";
 
 const ids = z.array(z.string().uuid()).min(1).max(500);
 const bulkActionSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("archive"), ids, archived: z.boolean() }).strict(),
+  z
+    .object({ action: z.literal("archive"), ids, archived: z.boolean() })
+    .strict(),
   z
     .object({
       action: z.literal("add_tag"),
@@ -26,8 +29,7 @@ const bulkActionSchema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameOriginRequest(request)) {
     return Response.json({ error: "Origin not allowed" }, { status: 403 });
   }
   const json = await readJson(request, 64_000);

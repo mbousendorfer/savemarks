@@ -23,6 +23,12 @@
   --shadow: 0 18px 60px rgba(25, 31, 24, 0.1);
   --sans: "Public Sans Variable", "Public Sans", sans-serif;
   --mono: "IBM Plex Mono", monospace;
+  --motion-fast: 120ms;
+  --motion-control: 160ms;
+  --motion-content: 220ms;
+  --motion-panel: 260ms;
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-move: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 * {
@@ -351,8 +357,11 @@ select:focus-visible,
   background: transparent;
   color: var(--faint);
   cursor: pointer;
-  transition: 140ms ease;
-  transition-property: color, background;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    box-shadow var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .theme-toggle button:hover {
@@ -363,6 +372,10 @@ select:focus-visible,
   background: var(--panel-soft);
   color: var(--ink);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.theme-toggle button.active svg {
+  animation: icon-settle var(--motion-content) var(--ease-enter);
 }
 
 .library-header {
@@ -498,6 +511,10 @@ select:focus-visible,
   border: 0;
   background: none;
   cursor: pointer;
+  animation: control-pop var(--motion-control) var(--ease-enter);
+  transition:
+    color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .search kbd {
@@ -532,6 +549,10 @@ select:focus-visible,
   background: transparent;
   color: var(--faint);
   cursor: pointer;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .view-toggle button:hover {
@@ -541,6 +562,10 @@ select:focus-visible,
 .view-toggle button.active {
   background: var(--ink);
   color: var(--bg);
+}
+
+.view-toggle button.active svg {
+  animation: icon-settle var(--motion-content) var(--ease-enter);
 }
 
 .explore-bar {
@@ -623,6 +648,11 @@ select:focus-visible,
   cursor: pointer;
   font-family: var(--mono);
   font-size: 11px;
+  animation: control-pop var(--motion-control) var(--ease-enter);
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .clear-filters:hover {
@@ -686,7 +716,7 @@ select:focus-visible,
   box-shadow: 0 22px 70px rgb(0 0 0 / 30%);
   backdrop-filter: blur(22px) saturate(1.2);
   transform: translateX(-50%);
-  animation: bulk-enter 180ms cubic-bezier(0.2, 0.78, 0.25, 1);
+  animation: bulk-enter var(--motion-content) var(--ease-enter);
 }
 
 @keyframes bulk-enter {
@@ -715,6 +745,7 @@ select:focus-visible,
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 700;
+  animation: selection-count-pop var(--motion-panel) var(--ease-enter);
 }
 
 .bulk-count div {
@@ -777,6 +808,11 @@ select:focus-visible,
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .bulk-tag button {
@@ -824,6 +860,7 @@ select:focus-visible,
   color: var(--danger);
   font-family: var(--mono);
   font-size: 10px;
+  animation: message-enter var(--motion-content) var(--ease-enter);
 }
 
 .bookmark-grid {
@@ -845,7 +882,7 @@ select:focus-visible,
   content-visibility: auto;
   contain-intrinsic-size: auto 390px;
   opacity: 0;
-  animation: reveal 400ms cubic-bezier(0.22, 0.7, 0.2, 1) forwards;
+  animation: reveal var(--motion-panel) var(--ease-enter) forwards;
 }
 
 @keyframes reveal {
@@ -870,47 +907,16 @@ select:focus-visible,
   border-radius: 9px;
   background: var(--panel);
   cursor: pointer;
-  transition: 180ms cubic-bezier(0.22, 0.7, 0.2, 1);
+  transition: var(--motion-content) var(--ease-enter);
   transition-property: transform, border-color, box-shadow;
-}
-
-.bookmark-card::before {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 5;
-  height: 2px;
-  content: "";
-  pointer-events: none;
 }
 
 .bookmark-card--source-x {
   border-radius: 8px;
 }
 
-.bookmark-card--source-x::before {
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0 5%,
-      var(--faint) 5% 31%,
-      transparent 31% 34%,
-      var(--faint) 34% 68%,
-      transparent 68% 71%,
-      var(--faint) 71% 95%,
-      transparent 95%
-    );
-  opacity: 0.48;
-}
-
 .bookmark-card--source-instagram {
   border-radius: 13px;
-}
-
-.bookmark-card--source-instagram::before {
-  height: 3px;
-  background: linear-gradient(90deg, #efb35f, #d76579 46%, #8a6ab4);
 }
 
 .bookmark-card--source-x.bookmark-card--text {
@@ -926,12 +932,10 @@ select:focus-visible,
     var(--panel);
 }
 
-.bookmark-card--source-x:hover,
 .bookmark-card--source-x:focus-visible {
   box-shadow: 0 18px 54px rgb(24 29 25 / 15%);
 }
 
-.bookmark-card--source-instagram:hover,
 .bookmark-card--source-instagram:focus-visible {
   border-color: color-mix(in srgb, #d76579 24%, var(--line-strong));
   box-shadow: 0 18px 58px rgb(166 82 103 / 16%);
@@ -946,12 +950,10 @@ select:focus-visible,
   pointer-events: none;
 }
 
-.bookmark-card:hover,
 .bookmark-card:focus-visible {
   z-index: 2;
   border-color: var(--line-strong);
   box-shadow: var(--shadow);
-  transform: translateY(-3px);
 }
 
 .bookmark-card--selected {
@@ -976,7 +978,7 @@ select:focus-visible,
   opacity: 0;
   backdrop-filter: blur(16px);
   transform: translateY(-5px);
-  transition: 150ms ease;
+  transition: var(--motion-fast) var(--ease-enter);
   transition-property: opacity, transform;
 }
 
@@ -1006,6 +1008,10 @@ select:focus-visible,
   background: transparent;
   color: currentColor;
   cursor: pointer;
+  transition:
+    color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .card-quick-actions button:hover {
@@ -1050,7 +1056,8 @@ select:focus-visible,
   background: var(--panel);
   box-shadow: 0 16px 45px rgb(0 0 0 / 24%);
   cursor: default;
-  animation: popover-enter 140ms ease-out;
+  transform-origin: top right;
+  animation: popover-enter var(--motion-control) var(--ease-enter);
 }
 
 .bookmark-card--media .card-tag-popover {
@@ -1061,7 +1068,7 @@ select:focus-visible,
 @keyframes popover-enter {
   from {
     opacity: 0;
-    transform: translateY(-5px);
+    transform: translateY(-4px) scale(0.96);
   }
 }
 
@@ -1108,11 +1115,7 @@ select:focus-visible,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 500ms cubic-bezier(0.22, 0.7, 0.2, 1);
-}
-
-.bookmark-card:hover .card-media img {
-  transform: scale(1.025);
+  transition: transform 320ms var(--ease-move);
 }
 
 .media-type {
@@ -1161,6 +1164,7 @@ select:focus-visible,
   border-radius: 9px;
   background: var(--panel-soft);
   object-fit: cover;
+  transition: transform var(--motion-content) var(--ease-enter);
 }
 
 .avatar--fallback {
@@ -1179,8 +1183,8 @@ select:focus-visible,
   gap: 3px;
 }
 
-.card-author strong,
-.card-author span {
+.card-author > div strong,
+.card-author > div span {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1202,7 +1206,7 @@ select:focus-visible,
 }
 
 .source-mark {
-  display: grid;
+  display: inline-grid;
   width: 30px;
   height: 30px;
   place-items: center;
@@ -1212,6 +1216,9 @@ select:focus-visible,
   background: var(--panel-soft);
   color: var(--muted);
   line-height: 0;
+  transition:
+    border-color var(--motion-control) ease,
+    transform var(--motion-content) var(--ease-enter);
 }
 
 .source-mark[data-source="x"] {
@@ -1242,11 +1249,6 @@ select:focus-visible,
 .source-icon {
   display: block;
   flex: none;
-}
-
-.source-icon--x {
-  /* The X glyph is geometrically centered but reads high-left at this size. */
-  transform: translate(1px, 1px);
 }
 
 .card-copy {
@@ -1285,6 +1287,10 @@ select:focus-visible,
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 700;
+  transition:
+    border-color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .card-footer {
@@ -1424,7 +1430,7 @@ select:focus-visible,
     radial-gradient(circle at 50% 18%, rgb(184 244 93 / 8%), transparent 34rem),
     var(--overlay);
   backdrop-filter: blur(18px) saturate(0.84);
-  animation: fade 160ms ease-out;
+  animation: fade var(--motion-panel) var(--ease-enter);
 }
 
 @keyframes fade {
@@ -1444,7 +1450,7 @@ select:focus-visible,
   box-shadow:
     0 44px 140px rgb(0 0 0 / 52%),
     0 1px 0 rgb(255 255 255 / 10%) inset;
-  animation: detail-enter 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  animation: detail-enter var(--motion-panel) var(--ease-enter);
 }
 
 .detail-panel--media {
@@ -1462,7 +1468,7 @@ select:focus-visible,
 @keyframes detail-enter {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.985);
+    transform: translateY(8px) scale(0.97);
   }
 }
 
@@ -1484,7 +1490,7 @@ select:focus-visible,
   color: var(--muted);
   cursor: pointer;
   backdrop-filter: blur(14px);
-  transition: 140ms ease;
+  transition: var(--motion-control) var(--ease-enter);
   transition-property: background, border-color, color, transform;
 }
 
@@ -1553,10 +1559,15 @@ select:focus-visible,
   background: #242823;
   color: white;
   cursor: pointer;
+  transition:
+    border-color var(--motion-control) ease,
+    opacity var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .media-strip button.active {
   border-color: var(--accent);
+  transform: scale(1.04);
 }
 
 .media-strip img {
@@ -1688,16 +1699,7 @@ select:focus-visible,
 }
 
 .detail-copy-frame {
-  display: grid;
-  grid-template-columns: 3px minmax(0, 1fr);
-  gap: 18px;
   margin: 30px 0 34px;
-}
-
-.detail-copy-frame > span {
-  border-radius: 99px;
-  background: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 72%, var(--line));
 }
 
 .detail-panel--text .detail-copy {
@@ -1749,6 +1751,11 @@ select:focus-visible,
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 700;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .tag-input {
@@ -1760,7 +1767,7 @@ select:focus-visible,
   border: 1px solid var(--line-strong);
   border-radius: 9px;
   background: color-mix(in srgb, var(--bg) 74%, transparent);
-  transition: 140ms ease;
+  transition: var(--motion-control) ease;
   transition-property: border-color, box-shadow, background;
 }
 
@@ -1814,6 +1821,7 @@ select:focus-visible,
   color: var(--danger);
   font-family: var(--mono);
   font-size: 11px;
+  animation: message-enter var(--motion-content) var(--ease-enter);
 }
 
 .detail-meta {
@@ -1925,7 +1933,7 @@ select:focus-visible,
   min-height: 40px;
   padding: 10px 13px;
   border-radius: 8px;
-  transition: 140ms ease;
+  transition: var(--motion-control) var(--ease-enter);
   transition-property: border-color, background, color, transform;
 }
 
@@ -1958,7 +1966,7 @@ select:focus-visible,
   border-radius: 16px;
   background: var(--panel);
   box-shadow: 0 34px 120px rgb(0 0 0 / 48%);
-  animation: detail-enter 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  animation: detail-enter var(--motion-panel) var(--ease-enter);
 }
 
 .confirm-icon {
@@ -2006,6 +2014,11 @@ select:focus-visible,
   color: var(--muted);
   cursor: pointer;
   font-weight: 700;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .confirm-actions .confirm-delete {
@@ -2028,6 +2041,7 @@ select:focus-visible,
   background: var(--panel);
   box-shadow: 0 34px 120px rgba(0, 0, 0, 0.46);
   text-align: center;
+  animation: detail-enter var(--motion-panel) var(--ease-enter);
 }
 
 .pairing-icon {
@@ -2069,6 +2083,10 @@ select:focus-visible,
   border-radius: 7px;
   background: var(--bg);
   cursor: pointer;
+  transition:
+    border-color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .pairing-code span {
@@ -2384,14 +2402,16 @@ select:focus-visible,
     left: 12px;
     z-index: 60;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-    padding: 6px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 5px;
     border: 1px solid color-mix(in srgb, var(--line-strong) 85%, transparent);
-    border-radius: 17px;
-    background: color-mix(in srgb, var(--panel) 92%, transparent);
-    box-shadow: 0 14px 50px rgba(8, 11, 8, 0.2);
-    backdrop-filter: blur(22px);
+    border-radius: 19px;
+    background: color-mix(in srgb, var(--panel) 96%, transparent);
+    box-shadow:
+      0 18px 54px rgba(8, 11, 8, 0.22),
+      inset 0 1px rgb(255 255 255 / 12%);
+    backdrop-filter: blur(24px) saturate(1.15);
   }
 
   .mobile-dock button {
@@ -2406,33 +2426,75 @@ select:focus-visible,
     background: transparent;
     color: var(--muted);
     cursor: pointer;
+    transition:
+      color var(--motion-control) ease,
+      background-color var(--motion-control) ease,
+      transform var(--motion-fast) var(--ease-enter);
   }
 
   .mobile-dock > a {
+    position: relative;
     display: grid;
     min-width: 0;
-    min-height: 52px;
+    min-height: 54px;
     place-items: center;
     gap: 3px;
-    padding: 6px 3px;
-    border-radius: 12px;
+    overflow: hidden;
+    padding: 7px 3px 8px;
+    border: 1px solid transparent;
+    border-radius: 14px;
     color: var(--muted);
     text-decoration: none;
+    transition:
+      color var(--motion-control) ease,
+      background-color var(--motion-control) ease,
+      transform var(--motion-fast) var(--ease-enter);
+  }
+
+  .mobile-dock > a::after {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    width: 16px;
+    height: 2px;
+    border-radius: 99px;
+    background: var(--accent);
+    content: "";
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.45);
+    transition:
+      opacity var(--motion-control) ease,
+      transform var(--motion-content) var(--ease-enter);
   }
 
   .mobile-dock > a span {
     overflow: hidden;
+    width: 100%;
     max-width: 100%;
     font-family: var(--mono);
     font-size: 11px;
     font-weight: 600;
+    text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .mobile-dock button.active {
-    background: var(--accent);
-    color: var(--accent-ink);
+  .mobile-dock button.active,
+  .mobile-dock > a.active {
+    border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+    background: color-mix(in srgb, var(--accent) 11%, var(--panel-soft));
+    color: var(--ink);
+    box-shadow: inset 0 1px rgb(255 255 255 / 10%);
+  }
+
+  .mobile-dock > a.active::after {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+
+  .mobile-dock button.active svg,
+  .mobile-dock > a.active svg {
+    animation: icon-settle var(--motion-content) var(--ease-enter);
   }
 
   .mobile-dock button span {
@@ -2592,7 +2654,6 @@ select:focus-visible,
   }
 
   .detail-copy-frame {
-    gap: 14px;
     margin-block: 26px 30px;
   }
 
@@ -2705,6 +2766,136 @@ select:focus-visible,
   }
 }
 
+@keyframes control-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes icon-settle {
+  from {
+    opacity: 0.5;
+    transform: scale(0.76) rotate(-5deg);
+  }
+}
+
+@keyframes selection-count-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.82);
+  }
+}
+
+@keyframes message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes tab-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes rl-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bookmark-card--source-x:hover {
+    box-shadow: 0 18px 54px rgb(24 29 25 / 15%);
+  }
+
+  .bookmark-card--source-instagram:hover {
+    border-color: color-mix(in srgb, #d76579 24%, var(--line-strong));
+    box-shadow: 0 18px 58px rgb(166 82 103 / 16%);
+  }
+
+  .bookmark-card:hover {
+    z-index: 2;
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow);
+    transform: translateY(-3px);
+  }
+
+  .bookmark-card:hover .card-quick-actions {
+    transition-duration: 0ms;
+  }
+
+  .bookmark-card:hover .card-media img,
+  .rl-card:hover .rl-thumb img {
+    transform: scale(1.025);
+  }
+
+  .bookmark-card:hover .avatar {
+    transform: scale(1.04);
+  }
+
+  .bookmark-card:hover .source-mark {
+    transform: scale(1.05);
+  }
+
+  .card-tags span:hover,
+  .rl-tags span:hover {
+    transform: translateY(-1px);
+  }
+
+  .rl-card:hover .rl-thumb {
+    border-color: var(--line-strong);
+    box-shadow: 0 12px 28px rgb(0 0 0 / 12%);
+    transform: translateY(-2px);
+  }
+
+  .rl-dropzone:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.theme-toggle button:active:not(:disabled),
+.view-toggle button:active:not(:disabled),
+.clear-filters:active:not(:disabled),
+.card-quick-actions button:active:not(:disabled),
+.bulk-tag button:active:not(:disabled),
+.bulk-actions button:active:not(:disabled),
+.detail-close:active:not(:disabled),
+.tag-list button:active:not(:disabled),
+.tag-input button:active:not(:disabled),
+.original-link:active,
+.archive-button:active:not(:disabled),
+.confirm-actions button:active:not(:disabled),
+.pairing-code:active,
+.rl-icon-button:active:not(:disabled),
+.rl-primary:active:not(:disabled),
+.rl-status-strip button:active:not(:disabled),
+.rl-actions button:active:not(:disabled),
+.rl-actions a:active,
+.rl-tabs button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.mobile-dock button:active:not(:disabled),
+.mobile-dock > a:active {
+  transform: scale(0.96);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2713,6 +2904,12 @@ select:focus-visible,
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .card-reveal,
+  .rl-card {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -2743,7 +2940,8 @@ select:focus-visible,
   color: var(--muted);
   font-size: 14px;
   font-weight: 600;
-  transition: 150ms ease;
+  transition: var(--motion-control) var(--ease-enter);
+  transition-property: color, background-color, border-color, transform;
 }
 
 .sidebar-section a:hover,
@@ -2799,6 +2997,15 @@ select:focus-visible,
   background: var(--panel-glass);
   color: var(--muted);
   cursor: pointer;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
+}
+
+.rl-icon-button > svg {
+  animation: icon-settle var(--motion-content) var(--ease-enter);
 }
 
 .rl-icon-button:hover {
@@ -2819,6 +3026,10 @@ select:focus-visible,
   color: var(--accent-ink);
   cursor: pointer;
   font-weight: 700;
+  transition:
+    border-color var(--motion-control) ease,
+    box-shadow var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .rl-primary:disabled {
@@ -2877,6 +3088,11 @@ select:focus-visible,
   color: var(--muted);
   cursor: pointer;
   text-transform: capitalize;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .rl-status-strip button.active {
@@ -2899,7 +3115,9 @@ select:focus-visible,
   min-height: 150px;
   padding: 18px 6px;
   border-bottom: 1px solid var(--line);
-  transition: 150ms ease;
+  opacity: 0;
+  animation: rl-card-enter var(--motion-panel) var(--ease-enter) forwards;
+  transition: var(--motion-control) ease;
   transition-property: background, transform;
 }
 
@@ -2918,12 +3136,17 @@ select:focus-visible,
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--panel-soft)), var(--panel-soft));
   color: var(--faint);
   text-decoration: none;
+  transition:
+    border-color var(--motion-control) ease,
+    box-shadow var(--motion-content) ease,
+    transform var(--motion-content) var(--ease-enter);
 }
 
 .rl-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 320ms var(--ease-move);
 }
 
 .rl-thumb span {
@@ -3022,6 +3245,10 @@ select:focus-visible,
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+  transition:
+    color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .rl-actions {
@@ -3043,6 +3270,11 @@ select:focus-visible,
   background: transparent;
   color: var(--faint);
   cursor: pointer;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .rl-actions button:hover,
@@ -3057,6 +3289,8 @@ select:focus-visible,
   max-width: 440px;
   gap: 6px;
   margin-top: 10px;
+  transform-origin: top left;
+  animation: popover-enter var(--motion-control) var(--ease-enter);
 }
 
 .rl-edit-tags input,
@@ -3099,6 +3333,7 @@ select:focus-visible,
   padding: 24px;
   background: var(--overlay);
   backdrop-filter: blur(10px);
+  animation: fade var(--motion-panel) var(--ease-enter);
 }
 
 .rl-add-panel {
@@ -3110,6 +3345,7 @@ select:focus-visible,
   border-radius: 14px;
   background: var(--panel);
   box-shadow: 0 30px 100px rgb(0 0 0 / 32%);
+  animation: detail-enter var(--motion-panel) var(--ease-enter);
 }
 
 .rl-add-panel > header {
@@ -3143,6 +3379,11 @@ select:focus-visible,
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-fast) var(--ease-enter);
 }
 
 .rl-tabs button.active {
@@ -3154,6 +3395,11 @@ select:focus-visible,
 .rl-form {
   display: grid;
   gap: 16px;
+  animation: tab-content-enter var(--motion-content) var(--ease-enter);
+}
+
+.rl-import {
+  animation: tab-content-enter var(--motion-content) var(--ease-enter);
 }
 
 .rl-form label {
@@ -3176,6 +3422,10 @@ select:focus-visible,
   border-radius: 8px;
   background: var(--bg);
   outline: none;
+  transition:
+    border-color var(--motion-control) ease,
+    box-shadow var(--motion-control) ease,
+    background-color var(--motion-control) ease;
 }
 
 .rl-form input:focus {
@@ -3195,6 +3445,11 @@ select:focus-visible,
   background: var(--bg);
   color: var(--muted);
   cursor: pointer;
+  transition:
+    color var(--motion-control) ease,
+    background-color var(--motion-control) ease,
+    border-color var(--motion-control) ease,
+    transform var(--motion-content) var(--ease-enter);
 }
 
 .rl-dropzone:hover {
@@ -3280,6 +3535,7 @@ select:focus-visible,
   margin: 14px 0 0;
   color: var(--muted);
   font-size: 13px;
+  animation: message-enter var(--motion-content) var(--ease-enter);
 }
 
 .rl-text-button {
@@ -3291,33 +3547,6 @@ select:focus-visible,
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.rl-mobile-dock a {
-  display: grid;
-  min-width: 0;
-  min-height: 52px;
-  place-items: center;
-  gap: 3px;
-  padding: 6px 3px;
-  border-radius: 12px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.rl-mobile-dock a.active {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.rl-mobile-dock a span {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.rl-mobile-dock {
-  grid-template-columns: repeat(5, 1fr);
 }
 
 @media (max-width: 820px) {
@@ -3413,6 +3642,7 @@ select:focus-visible,
     padding: 22px 16px calc(22px + env(safe-area-inset-bottom));
     border-width: 1px 0 0;
     border-radius: 18px 18px 0 0;
+    animation: sheet-enter var(--motion-panel) var(--ease-move);
   }
 
   .rl-mapping {

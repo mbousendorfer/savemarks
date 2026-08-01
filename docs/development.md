@@ -25,6 +25,7 @@ Variables principales :
 | `SAVEMARKS_TOKEN_PEPPER`          | Secret serveur pour hasher codes et tokens    |
 | `SAVEMARKS_WEB_USERNAME`          | Identifiant de la web app (production)        |
 | `SAVEMARKS_WEB_PASSWORD`          | Mot de passe de la web app (production)       |
+| `SAVEMARKS_BASE_URL`              | URL publique, utile derrière un reverse proxy |
 | `SAVEMARKS_ALLOWED_EXTENSION_IDS` | IDs Chrome autorisés, séparés par virgules    |
 | `SAVEMARKS_DEV_ORIGINS`           | Origines web CORS autorisées en développement |
 | `SAVEMARKS_PORT`                  | Port publié par Compose                       |

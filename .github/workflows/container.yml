@@ -58,7 +58,7 @@ jobs:
             type=sha
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=Local-first X and Instagram bookmark library
+            org.opencontainers.image.description=Local-first X, Instagram, and Web bookmark library
 
       - name: Build and publish the image
         uses: docker/build-push-action@v7
