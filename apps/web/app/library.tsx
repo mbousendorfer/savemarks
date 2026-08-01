@@ -619,8 +619,20 @@ export function Library({
   const [pairing, setPairing] = useState(false);
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDER_COUNT);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setBookmarks(initialBookmarks), [initialBookmarks]);
+
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
 
   useEffect(() => {
     void fetch("/api/media/sync", { method: "POST" });
@@ -763,79 +775,162 @@ export function Library({
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">
-            <BookmarksIcon size={22} weight="fill" />
+            <BookmarksIcon size={19} weight="fill" />
           </span>
-          <span>SaveMarks</span>
+          <span className="brand-copy">
+            <strong>SaveMarks</strong>
+            <small>local archive</small>
+          </span>
         </div>
-        <div className="sidebar-section">
-          <p>Library</p>
+        <nav className="sidebar-nav" aria-label="Library navigation">
+          <div className="sidebar-section">
+            <p>Workspace</p>
+            {(
+              [
+                ["all", BookmarksIcon],
+                ["archived", ArchiveIcon],
+              ] as const
+            ).map(([value, Icon]) => (
+              <button
+                key={value}
+                className={filter === value ? "active" : ""}
+                onClick={() => setFilter(value)}
+                aria-current={filter === value ? "page" : undefined}
+                aria-label={filterLabels[value]}
+                title={filterLabels[value]}
+              >
+                <Icon size={16} />
+                <span>{filterLabels[value]}</span>
+                <em>{counts[value]}</em>
+              </button>
+            ))}
+          </div>
+          <div className="sidebar-section">
+            <p>Sources</p>
+            {(
+              [
+                ["x", XLogoIcon],
+                ["instagram", InstagramLogoIcon],
+              ] as const
+            ).map(([value, Icon]) => (
+              <button
+                key={value}
+                className={filter === value ? "active" : ""}
+                onClick={() => setFilter(value)}
+                aria-current={filter === value ? "page" : undefined}
+                aria-label={filterLabels[value]}
+                title={filterLabels[value]}
+              >
+                <Icon size={16} />
+                <span>{filterLabels[value]}</span>
+                <em>{counts[value]}</em>
+              </button>
+            ))}
+          </div>
+          <div className="sidebar-section">
+            <p>Formats</p>
           {(
             [
-              ["all", BookmarksIcon],
-              ["x", XLogoIcon],
-              ["instagram", InstagramLogoIcon],
               ["images", ImageIcon],
               ["videos", VideoCameraIcon],
               ["carousels", GridFourIcon],
               ["reels", VideoCameraIcon],
               ["text", TextTIcon],
-              ["archived", ArchiveIcon],
             ] as const
           ).map(([value, Icon]) => (
             <button
               key={value}
               className={filter === value ? "active" : ""}
               onClick={() => setFilter(value)}
+              aria-current={filter === value ? "page" : undefined}
+              aria-label={filterLabels[value]}
+              title={filterLabels[value]}
             >
-              <Icon size={17} />
+              <Icon size={16} />
               <span>{filterLabels[value]}</span>
               <em>{counts[value]}</em>
             </button>
           ))}
-        </div>
-        <div className="sidebar-note">
-          <span className="status-dot" />
-          <div>
-            <strong>Local library</strong>
-            <span>PostgreSQL connected</span>
           </div>
+        </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-note">
+            <span className="status-dot" />
+            <div>
+              <strong>System online</strong>
+              <span>PostgreSQL / local media</span>
+            </div>
+          </div>
+          <button className="pair-link" onClick={() => setPairing(true)}>
+            <LinkIcon size={15} />
+            Pair extension
+            <span>↗</span>
+          </button>
         </div>
-        <button className="pair-link" onClick={() => setPairing(true)}>
-          <LinkIcon size={16} />
-          Pair extension
-        </button>
       </aside>
 
       <section className="library">
+        <div className="workspace-bar">
+          <div className="workspace-path" aria-label="Current location">
+            <span>~/savemarks</span>
+            <strong>/{filter}</strong>
+          </div>
+          <div className="workspace-status">
+            <span className="status-dot" />
+            local-first
+          </div>
+        </div>
         <header className="library-header">
-          <div>
-            <p className="eyebrow">Private archive</p>
+          <div className="library-title">
+            <p className="eyebrow">
+              Collection /{" "}
+              {String(Object.keys(counts).indexOf(filter) + 1).padStart(2, "0")}
+            </p>
             <h1>{filterLabels[filter]}</h1>
             <p className="result-count">
-              Showing {visible.length} of {counts[filter]} saved{" "}
-              {counts[filter] === 1 ? "item" : "items"}
+              {visible.length} visible · {counts[filter]} indexed
             </p>
           </div>
+          <div className="header-metrics" aria-label="Library metrics">
+            <div>
+              <span>Records</span>
+              <strong>{counts.all}</strong>
+            </div>
+            <div>
+              <span>Media</span>
+              <strong>{counts.images + counts.videos + counts.carousels + counts.reels}</strong>
+            </div>
+            <div>
+              <span>Tags</span>
+              <strong>{allTags.length}</strong>
+            </div>
+          </div>
+        </header>
+
+        <div className="command-row">
           <div className="header-actions">
             <label className="search">
               <MagnifyingGlassIcon size={19} />
               <input
+                ref={searchInputRef}
                 aria-label="Search bookmarks"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search your memory…"
+                placeholder="Search archive…"
               />
               {query && (
                 <button onClick={() => setQuery("")} aria-label="Clear search">
                   <XIcon size={15} />
                 </button>
               )}
+              {!query && <kbd>⌘ K</kbd>}
             </label>
             <div className="view-toggle">
               <button
                 className={view === "grid" ? "active" : ""}
                 onClick={() => setView("grid")}
                 aria-label="Grid view"
+                aria-pressed={view === "grid"}
               >
                 <GridFourIcon size={18} />
               </button>
@@ -843,12 +938,20 @@ export function Library({
                 className={view === "list" ? "active" : ""}
                 onClick={() => setView("list")}
                 aria-label="List view"
+                aria-pressed={view === "list"}
               >
                 <RowsIcon size={18} />
               </button>
             </div>
           </div>
-        </header>
+          <button
+            className="pair-link pair-link--mobile"
+            onClick={() => setPairing(true)}
+          >
+            <LinkIcon size={15} />
+            Pair
+          </button>
+        </div>
 
         <div className="explore-bar" aria-label="Library controls">
           <div className="control-group">
@@ -916,6 +1019,11 @@ export function Library({
               <XIcon size={13} />
             </button>
           )}
+        </div>
+
+        <div className="index-line" aria-hidden="true">
+          <span>INDEX / {filter.toUpperCase()}</span>
+          <span>{sortLabels[sort]}</span>
         </div>
 
         {visible.length > 0 ? (
