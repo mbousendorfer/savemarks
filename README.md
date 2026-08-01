@@ -1,7 +1,7 @@
 # SaveMarks
 
-SaveMarks est une bibliothèque locale et auto-hébergée pour les favoris X et les
-publications enregistrées sur Instagram.
+SaveMarks est une bibliothèque locale et auto-hébergée pour les favoris X, les
+publications enregistrées sur Instagram et les liens à lire plus tard.
 
 > **État actuel : bibliothèque X utilisable.** L’application affiche les
 > bookmarks stockés dans PostgreSQL, avec recherche, filtres, vues grille/liste
@@ -32,6 +32,10 @@ Il reste ensuite deux actions manuelles :
 La page d’accueil est la bibliothèque : les bookmarks apparaissent dès qu’ils
 ont été synchronisés par l’extension.
 
+La section **Read later** permet aussi d’ajouter directement une URL ou
+d’importer jusqu’à 25 000 liens depuis un CSV ou un fichier texte. Voir le
+[guide Read later](docs/read-later.md).
+
 Les médias et les données PostgreSQL locales sont conservés dans le dossier
 visible `data/` à la racine du projet. Ce dossier est exclu de Git.
 
@@ -40,7 +44,7 @@ Le guide complet, captures comprises, est dans
 
 ## Déploiement Docker / Unraid
 
-Chaque push sur `main` génère automatiquement une image Docker multi-architecture
+Chaque push sur `main` génère automatiquement une image Docker `linux/amd64`
 sur GitHub Container Registry :
 
 ```text
@@ -72,6 +76,7 @@ une authentification séparée par jeton révocable.
 
 - [Installation locale et premier lancement](docs/getting-started.md)
 - [Installation et utilisation de l’extension](docs/extension.md)
+- [Read later et import CSV](docs/read-later.md)
 - [Développement et commandes](docs/development.md)
 - [Déploiement sur Unraid](docs/unraid.md)
 - [Dépannage](docs/troubleshooting.md)

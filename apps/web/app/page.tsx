@@ -6,7 +6,7 @@ import {
   mediaAssets,
   tags,
 } from "@savemarks/database";
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { Library, type LibraryBookmark } from "./library";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +53,16 @@ export default async function LibraryPage() {
     })
     .from(bookmarkTags)
     .innerJoin(tags, eq(bookmarkTags.tagId, tags.id));
+  const [readLater] = await database()
+    .select({ value: count() })
+    .from(bookmarks)
+    .where(
+      and(
+        eq(bookmarks.source, "web"),
+        eq(bookmarks.archived, false),
+        isNull(bookmarks.readAt),
+      ),
+    );
   const tagsByBookmark = new Map<string, string[]>();
   for (const row of tagRows) {
     const existing = tagsByBookmark.get(row.bookmarkId) ?? [];
@@ -62,6 +72,7 @@ export default async function LibraryPage() {
 
   const byId = new Map<string, LibraryBookmark>();
   for (const row of rows) {
+    if (row.source === "web" || row.contentType === "link") continue;
     const existing = byId.get(row.id);
     if (existing) {
       if (row.mediaId && row.mediaUrl) {
@@ -117,5 +128,10 @@ export default async function LibraryPage() {
     });
   }
 
-  return <Library initialBookmarks={[...byId.values()]} />;
+  return (
+    <Library
+      initialBookmarks={[...byId.values()]}
+      initialReadLaterCount={readLater?.value ?? 0}
+    />
+  );
 }

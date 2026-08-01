@@ -8,12 +8,14 @@ import {
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, normalize } from "node:path";
+import { fetchPublicResource } from "./public-fetch";
 
 const MIME_EXTENSIONS: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
   "image/webp": ".webp",
   "image/gif": ".gif",
+  "image/avif": ".avif",
   "video/mp4": ".mp4",
   "video/webm": ".webm",
 };
@@ -23,7 +25,7 @@ const MAX_VIDEO_BYTES = 750 * 1024 * 1024;
 
 interface PendingMedia {
   id: string;
-  source: "x" | "instagram";
+  source: "x" | "instagram" | "web";
   sourceUrl: string;
   mimeType: string | null;
 }
@@ -47,6 +49,7 @@ function allowedHost(source: PendingMedia["source"], hostname: string): boolean 
   if (source === "x") {
     return host === "pbs.twimg.com" || host === "video.twimg.com";
   }
+  if (source === "web") return false;
   return (
     host.endsWith(".cdninstagram.com") ||
     host === "cdninstagram.com" ||
@@ -87,31 +90,37 @@ async function storeMedia(item: PendingMedia): Promise<void> {
     .where(eq(mediaAssets.id, item.id));
 
   try {
-    const response = await safeFetch(item.source, item.sourceUrl);
-    if (!response.ok || !response.body) {
-      throw new Error(`Media server returned HTTP ${response.status}`);
+    let bytes: Uint8Array;
+    let responseMimeType: string;
+    if (item.source === "web") {
+      const response = await fetchPublicResource(item.sourceUrl, {
+        maxBytes: 10 * 1024 * 1024,
+        timeoutMs: 8_000,
+        acceptedTypes: [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif",
+          "image/avif",
+        ],
+      });
+      bytes = response.bytes;
+      responseMimeType = response.contentType;
+    } else {
+      const response = await safeFetch(item.source, item.sourceUrl);
+      if (!response.ok || !response.body) {
+        throw new Error(`Media server returned HTTP ${response.status}`);
+      }
+      responseMimeType = response.headers.get("content-type") ?? item.mimeType ?? "";
+      bytes = new Uint8Array(await response.arrayBuffer());
     }
-    const mimeType = (
-      response.headers.get("content-type") ??
-      item.mimeType ??
-      ""
-    )
-      .split(";")[0]
-      ?.trim()
-      .toLowerCase();
+    const mimeType = responseMimeType.split(";")[0]?.trim().toLowerCase();
     if (!mimeType || !MIME_EXTENSIONS[mimeType]) {
       throw new Error(`Unsupported media type: ${mimeType || "unknown"}`);
     }
     const maxBytes = mimeType.startsWith("video/")
       ? MAX_VIDEO_BYTES
       : MAX_IMAGE_BYTES;
-    const declaredSize = Number(response.headers.get("content-length"));
-    if (Number.isFinite(declaredSize) && declaredSize > maxBytes) {
-      throw new Error(
-        `Media exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit`,
-      );
-    }
-    const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > maxBytes) {
       throw new Error(`Media exceeds the ${Math.round(maxBytes / 1024 / 1024)} MB limit`);
     }

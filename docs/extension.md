@@ -19,6 +19,9 @@ Permissions permanentes :
 
 - `storage` : paramètres, token de pairing et métadonnées bornées ;
 - `alarms` : synchronisation périodique ;
+- `activeTab` et `scripting` : lecture ponctuelle des métadonnées de la page
+  uniquement après une action explicite ;
+- `contextMenus` : commandes **Save page/link to Read later** ;
 - accès hôte limité à `x.com`, `twitter.com` et `www.instagram.com`.
 
 L’accès au serveur SaveMarks est demandé au moment du pairing, uniquement pour
@@ -46,6 +49,11 @@ Le popup affiche :
 - dernier sync réussi ;
 - état actuel des adapters X et Instagram ;
 - bouton de retry manuel.
+
+Il affiche également un aperçu de l’onglet courant, un champ de tags et le
+bouton **Read later**. Le clic droit permet de sauvegarder la page ou un lien
+sans installer de content script sur tous les sites. Les pages `chrome://`,
+`file://` et les protocoles non HTTP(S) sont refusés.
 
 Après avoir ouvert la page des bookmarks X, le statut X passe à **Active**. Dans
 Settings, **Import X history** récupère les pages anciennes avec un délai

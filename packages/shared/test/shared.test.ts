@@ -3,6 +3,7 @@ import {
   bookmarkIdentity,
   normalizeUrl,
   normalizedBookmarkSchema,
+  readLaterCaptureSchema,
   redactSecrets,
 } from "../src";
 
@@ -37,4 +38,19 @@ describe("shared contracts", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("validates safe read-later captures and normalizes tags", () => {
+    const parsed = readLaterCaptureSchema.parse({
+      url: "https://example.com/article",
+      tags: ["Design", "design", "Research"],
+    });
+    expect(parsed.tags).toEqual(["design", "research"]);
+  });
+
+  it.each(["javascript:alert(1)", "file:///tmp/private", "chrome://settings"])(
+    "rejects unsupported read-later URL %s",
+    (url) => {
+      expect(readLaterCaptureSchema.safeParse({ url, tags: [] }).success).toBe(false);
+    },
+  );
 });

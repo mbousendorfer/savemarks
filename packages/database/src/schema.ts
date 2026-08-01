@@ -14,7 +14,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const sourceEnum = pgEnum("source", ["x", "instagram"]);
+export const sourceEnum = pgEnum("source", ["x", "instagram", "web"]);
 export const contentTypeEnum = pgEnum("content_type", [
   "text",
   "image",
@@ -23,11 +23,18 @@ export const contentTypeEnum = pgEnum("content_type", [
   "reel",
   "thread",
   "quote",
+  "link",
 ]);
 export const mediaStatusEnum = pgEnum("media_status", [
   "pending",
   "downloading",
   "stored",
+  "failed",
+]);
+export const enrichmentStatusEnum = pgEnum("enrichment_status", [
+  "pending",
+  "processing",
+  "complete",
   "failed",
 ]);
 
@@ -67,14 +74,13 @@ export const bookmarks = pgTable(
     contentType: contentTypeEnum("content_type").notNull(),
     text: text("text"),
     caption: text("caption"),
-    authorId: uuid("author_id")
-      .notNull()
-      .references(() => authors.id),
+    authorId: uuid("author_id").references(() => authors.id),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     savedAt: timestamp("saved_at", { withTimezone: true }),
     importedAt: timestamp("imported_at", { withTimezone: true }).notNull(),
     rawSchemaVersion: varchar("raw_schema_version", { length: 128 }).notNull(),
     archived: boolean("archived").notNull().default(false),
+    readAt: timestamp("read_at", { withTimezone: true }),
     createdAt,
     updatedAt,
   },
@@ -85,6 +91,37 @@ export const bookmarks = pgTable(
     ),
     index("bookmarks_normalized_url_hash_idx").on(table.normalizedUrlHash),
     index("bookmarks_saved_at_idx").on(table.savedAt),
+  ],
+);
+
+export const webPages = pgTable(
+  "web_pages",
+  {
+    bookmarkId: uuid("bookmark_id")
+      .primaryKey()
+      .references(() => bookmarks.id, { onDelete: "cascade" }),
+    title: text("title"),
+    description: text("description"),
+    siteName: varchar("site_name", { length: 512 }),
+    author: varchar("author", { length: 512 }),
+    imageUrl: text("image_url"),
+    enrichmentStatus: enrichmentStatusEnum("enrichment_status")
+      .notNull()
+      .default("pending"),
+    enrichmentAttempts: integer("enrichment_attempts").notNull().default(0),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastError: text("last_error"),
+    enrichedAt: timestamp("enriched_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("web_pages_enrichment_queue_idx").on(
+      table.enrichmentStatus,
+      table.nextRetryAt,
+    ),
   ],
 );
 

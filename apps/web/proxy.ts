@@ -9,7 +9,7 @@ function extensionRequest(request: NextRequest): boolean {
   if (request.method === "OPTIONS") return true;
   if (path === "/api/pairing/exchange") return true;
   return (
-    path === "/api/bookmarks" &&
+    (path === "/api/bookmarks" || path === "/api/read-later") &&
     request.headers.get("authorization")?.startsWith("Bearer ") === true
   );
 }

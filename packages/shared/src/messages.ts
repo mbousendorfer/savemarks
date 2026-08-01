@@ -1,9 +1,13 @@
 import { z } from "zod";
-import { normalizedBookmarkSchema, sourceSchema } from "./models";
+import {
+  normalizedBookmarkSchema,
+  readLaterCaptureSchema,
+  socialSourceSchema,
+} from "./models";
 
 export const diagnosticEventSchema = z.object({
   id: z.string().uuid(),
-  source: sourceSchema,
+  source: socialSourceSchema,
   occurredAt: z.iso.datetime(),
   transport: z.enum(["fetch", "xhr"]),
   method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]),
@@ -33,7 +37,7 @@ export const pageBridgeMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("SAVEMARKS_TEMPLATE_CAPTURED"),
     version: z.literal(1),
     payload: z.object({
-      source: sourceSchema,
+      source: socialSourceSchema,
       url: z.string().max(4096),
       method: z.enum(["GET", "POST"]),
       operationName: z.string().max(256).optional(),
@@ -54,4 +58,22 @@ export const pairingExchangeSchema = z.object({
 export const bookmarkIngestSchema = z.object({
   clientItemId: z.string().uuid(),
   bookmark: normalizedBookmarkSchema,
+});
+
+export const readLaterIngestSchema = z.object({
+  clientItemId: z.string().uuid(),
+  mode: z.enum(["save", "import"]).default("save"),
+  item: readLaterCaptureSchema,
+});
+
+export const readLaterBatchIngestSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        row: z.number().int().positive(),
+        item: z.unknown(),
+      }),
+    )
+    .min(1)
+    .max(100),
 });

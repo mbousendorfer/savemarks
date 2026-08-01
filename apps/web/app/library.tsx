@@ -4,6 +4,7 @@ import {
   ArchiveIcon,
   ArrowSquareOutIcon,
   BookmarksIcon,
+  BookOpenTextIcon,
   CheckIcon,
   CopyIcon,
   CalendarBlankIcon,
@@ -465,7 +466,11 @@ function Detail({
             )}
           </div>
         )}
-        <div className="detail-content">
+        <div
+          className="detail-content"
+          tabIndex={0}
+          aria-label="Scrollable bookmark details"
+        >
           <div className="detail-kicker">
             <SourceMark source={bookmark.source} />
             {bookmark.source} · {bookmark.contentType}
@@ -635,8 +640,10 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
 
 export function Library({
   initialBookmarks,
+  initialReadLaterCount,
 }: {
   initialBookmarks: LibraryBookmark[];
+  initialReadLaterCount: number;
 }) {
   const router = useRouter();
   const [bookmarks, setBookmarks] = useState(initialBookmarks);
@@ -858,6 +865,11 @@ export function Library({
         <nav className="sidebar-nav" aria-label="Library navigation">
           <div className="sidebar-section">
             <p>Workspace</p>
+            <a href="/read-later" aria-label="Read later">
+              <BookOpenTextIcon size={16} />
+              <span>Read later</span>
+              <em>{initialReadLaterCount}</em>
+            </a>
             {(
               [
                 ["all", BookmarksIcon],
@@ -1175,6 +1187,10 @@ export function Library({
       </section>
 
       <nav className="mobile-dock" aria-label="Mobile library navigation">
+        <a href="/read-later">
+          <BookOpenTextIcon size={20} />
+          <span>Read later</span>
+        </a>
         {(
           [
             ["all", BookmarksIcon],

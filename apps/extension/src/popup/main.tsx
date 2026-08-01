@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import type { PagePreview } from "../lib/read-later";
 import { getSettings } from "../lib/settings";
 import "../ui.css";
 
@@ -8,9 +9,11 @@ interface Status {
   server: "not configured" | "checking" | "online" | "offline";
   pending: number;
   failed: number;
-  xActive: boolean;
-  instagramActive: boolean;
   lastSuccessfulSync?: string;
+}
+
+function tagsFromInput(value: string) {
+  return [...new Set(value.split(/[,;]/).map((tag) => tag.trim()).filter(Boolean))];
 }
 
 function Popup() {
@@ -19,40 +22,36 @@ function Popup() {
     server: "not configured",
     pending: 0,
     failed: 0,
-    xActive: false,
-    instagramActive: false,
   });
+  const [preview, setPreview] = useState<PagePreview>({ supported: false });
+  const [tags, setTags] = useState("");
+  const [feedback, setFeedback] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   async function refresh(): Promise<void> {
     const settings = await getSettings();
-    const stats = (await chrome.runtime.sendMessage({
-      type: "QUEUE_STATS",
-    })) as { pending: number; failed: number };
-    const sourceStatus = await chrome.storage.local.get([
-      "xAdapterActive",
-      "instagramAdapterActive",
-    ]);
-    const next: Status = {
+    const stats = (await chrome.runtime.sendMessage({ type: "QUEUE_STATS" })) as {
+      pending: number;
+      failed: number;
+    };
+    setStatus({
       paired: Boolean(settings.apiToken),
       server: settings.serverUrl ? "checking" : "not configured",
       pending: stats.pending,
       failed: stats.failed,
-      xActive: sourceStatus.xAdapterActive === true,
-      instagramActive: sourceStatus.instagramAdapterActive === true,
       ...(settings.lastSuccessfulSync
         ? { lastSuccessfulSync: settings.lastSuccessfulSync }
         : {}),
-    };
-    setStatus(next);
+    });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const page = (await chrome.runtime.sendMessage({
+      type: "PREVIEW_ACTIVE_TAB",
+      tabId: tab?.id,
+    })) as PagePreview;
+    setPreview(page);
     if (settings.serverUrl) {
       try {
-        const response = await fetch(
-          `${settings.serverUrl.replace(/\/$/, "")}/api/health`,
-        );
-        setStatus((current) => ({
-          ...current,
-          server: response.ok ? "online" : "offline",
-        }));
+        const response = await fetch(`${settings.serverUrl.replace(/\/$/, "")}/api/health`);
+        setStatus((current) => ({ ...current, server: response.ok ? "online" : "offline" }));
       } catch {
         setStatus((current) => ({ ...current, server: "offline" }));
       }
@@ -63,58 +62,82 @@ function Popup() {
     void refresh();
   }, []);
 
+  async function savePage() {
+    if (!preview.supported || !preview.url) return;
+    setFeedback("saving");
+    const response = (await chrome.runtime.sendMessage({
+      type: "ENQUEUE_READ_LATER",
+      payload: {
+        url: preview.url,
+        metadata: {
+          title: preview.title,
+          description: preview.description,
+          siteName: preview.siteName,
+          author: preview.author,
+          imageUrl: preview.imageUrl,
+        },
+        tags: tagsFromInput(tags),
+      },
+    })) as { ok: boolean };
+    setFeedback(response.ok ? "saved" : "error");
+    if (response.ok) {
+      setTags("");
+      await refresh();
+    }
+  }
+
   return (
-    <main style={{ width: 330, padding: 14 }}>
-      <section className="panel">
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <main className="popup-shell">
+      <header className="popup-header">
+        <div>
           <strong>SaveMarks</strong>
-          <span className="muted" style={{ fontSize: 12 }}>
-            {status.server}
-          </span>
+          <span>read later</span>
         </div>
-        <dl
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: "10px 16px",
-            margin: "20px 0",
-            fontSize: 13,
-          }}
-        >
-          <dt className="muted">Pairing</dt>
-          <dd>{status.paired ? "Connected" : "Required"}</dd>
-          <dt className="muted">Pending</dt>
-          <dd>{status.pending}</dd>
-          <dt className="muted">Failed</dt>
-          <dd>{status.failed}</dd>
-          <dt className="muted">X</dt>
-          <dd>{status.xActive ? "Active" : "Waiting for bookmarks page"}</dd>
-          <dt className="muted">Instagram</dt>
-          <dd>
-            {status.instagramActive ? "Active" : "Awaiting live spike"}
-          </dd>
-        </dl>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className="primary"
-            onClick={() =>
-              void chrome.runtime
-                .sendMessage({ type: "SYNC_NOW" })
-                .then(refresh)
-            }
-          >
-            Sync queue
-          </button>
-          <button className="secondary" onClick={() => chrome.runtime.openOptionsPage()}>
-            Settings
-          </button>
-        </div>
-        {status.lastSuccessfulSync && (
-          <p className="muted" style={{ fontSize: 11, marginBottom: 0 }}>
-            Last sync {new Date(status.lastSuccessfulSync).toLocaleString()}
-          </p>
+        <i className={`server-dot ${status.server}`} title={status.server} />
+      </header>
+
+      <section className="capture-panel">
+        <p className="eyebrow">Current page</p>
+        {preview.supported ? (
+          <>
+            <h1>{preview.title || preview.siteName || "Untitled page"}</h1>
+            <p className="capture-host">{preview.siteName}</p>
+            <input
+              value={tags}
+              onChange={(event) => setTags(event.target.value)}
+              placeholder="Tags, separated by commas"
+              aria-label="Tags"
+            />
+            <button
+              className="capture-button"
+              disabled={!status.paired || feedback === "saving"}
+              onClick={() => void savePage()}
+            >
+              {feedback === "saving"
+                ? "Saving…"
+                : feedback === "saved"
+                  ? "Saved to Read later"
+                  : "Read later"}
+            </button>
+          </>
+        ) : (
+          <p className="unsupported">This browser page cannot be saved.</p>
         )}
+        {!status.paired && <p className="capture-warning">Pair the extension first.</p>}
+        {feedback === "error" && <p className="capture-warning">Could not queue this page.</p>}
       </section>
+
+      <footer className="popup-footer">
+        <span>{status.pending} pending · {status.failed} failed</span>
+        <div>
+          <button
+            onClick={() => void chrome.runtime.sendMessage({ type: "SYNC_NOW" }).then(refresh)}
+          >
+            Sync
+          </button>
+          <button onClick={() => chrome.runtime.openOptionsPage()}>Settings</button>
+        </div>
+      </footer>
     </main>
   );
 }

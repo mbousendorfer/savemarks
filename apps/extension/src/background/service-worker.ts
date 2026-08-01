@@ -1,11 +1,37 @@
 import { diagnosticEventSchema } from "@savemarks/shared/messages";
-import { normalizedBookmarkSchema } from "@savemarks/shared/models";
-import { enqueue, flushQueue, queueStats } from "../lib/queue";
+import {
+  normalizedBookmarkSchema,
+  readLaterCaptureSchema,
+} from "@savemarks/shared/models";
+import { enqueue, enqueueReadLater, flushQueue, queueStats } from "../lib/queue";
+import { previewActiveTab, previewToCapture } from "../lib/read-later";
 import { getSettings, setSettings } from "../lib/settings";
 
 const SYNC_ALARM = "savemarks-sync";
 const MAX_DIAGNOSTIC_EVENTS = 250;
 let activeSynchronization: Promise<void> | undefined;
+
+async function configureContextMenus(): Promise<void> {
+  await chrome.contextMenus.removeAll();
+  chrome.contextMenus.create({
+    id: "savemarks-read-page",
+    title: "Save page to Read later",
+    contexts: ["page"],
+    documentUrlPatterns: ["http://*/*", "https://*/*"],
+  });
+  chrome.contextMenus.create({
+    id: "savemarks-read-link",
+    title: "Save link to Read later",
+    contexts: ["link"],
+    targetUrlPatterns: ["http://*/*", "https://*/*"],
+  });
+}
+
+async function showCaptureFeedback(ok: boolean) {
+  await chrome.action.setBadgeBackgroundColor({ color: ok ? "#6f9f2f" : "#b7483d" });
+  await chrome.action.setBadgeText({ text: ok ? "✓" : "!" });
+  setTimeout(() => void chrome.action.setBadgeText({ text: "" }), 2_000);
+}
 
 async function configureAlarm(): Promise<void> {
   const settings = await getSettings();
@@ -39,6 +65,7 @@ function scheduleSynchronization(): void {
 
 chrome.runtime.onInstalled.addListener(() => {
   void configureAlarm();
+  void configureContextMenus();
 });
 chrome.runtime.onStartup.addListener(() => {
   void configureAlarm();
@@ -48,6 +75,25 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 chrome.storage.onChanged.addListener((_changes, area) => {
   if (area === "local") void configureAlarm();
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  void (async () => {
+    let capture;
+    if (info.menuItemId === "savemarks-read-link" && info.linkUrl) {
+      const parsed = readLaterCaptureSchema.safeParse({ url: info.linkUrl, tags: [] });
+      capture = parsed.success ? parsed.data : undefined;
+    } else if (info.menuItemId === "savemarks-read-page") {
+      capture = previewToCapture(await previewActiveTab(tab?.id), []);
+    }
+    if (!capture) {
+      await showCaptureFeedback(false);
+      return;
+    }
+    await enqueueReadLater(capture);
+    scheduleSynchronization();
+    await showCaptureFeedback(true);
+  })();
 });
 
 chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
@@ -68,6 +114,24 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
           instagramAdapterActive:
             parsed.data.source === "instagram" || undefined,
         });
+        scheduleSynchronization();
+      }
+      sendResponse({ ok: parsed.success });
+      return;
+    }
+    if (type === "PREVIEW_ACTIVE_TAB") {
+      const tabId = (message as { tabId?: unknown }).tabId;
+      sendResponse(
+        await previewActiveTab(typeof tabId === "number" ? tabId : undefined),
+      );
+      return;
+    }
+    if (type === "ENQUEUE_READ_LATER") {
+      const parsed = readLaterCaptureSchema.safeParse(
+        (message as { payload?: unknown }).payload,
+      );
+      if (parsed.success) {
+        await enqueueReadLater(parsed.data);
         scheduleSynchronization();
       }
       sendResponse({ ok: parsed.success });

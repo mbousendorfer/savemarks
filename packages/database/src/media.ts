@@ -6,6 +6,7 @@ const SAFE_MIME_EXTENSIONS: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "image/gif": ".gif",
+  "image/avif": ".avif",
   "video/mp4": ".mp4",
   "video/webm": ".webm",
 };

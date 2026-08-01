@@ -10,9 +10,10 @@ browser profile or Unraid host is outside the protection boundary.
 
 ## Permissions
 
-The extension has `storage` and `alarms`, plus host access limited to X,
-Twitter, and Instagram. It does not request `cookies`, web-wide content-script
-access, or webRequest interception. A server origin is requested as an optional
+The extension has `storage`, `alarms`, `activeTab`, `scripting`, and
+`contextMenus`, plus host access limited to X, Twitter, and Instagram. Generic
+page metadata is read only after an explicit user action. It does not request
+`cookies`, web-wide content-script access, or webRequest interception. A server origin is requested as an optional
 permission only when the user pairs a configured URL; Chrome requires broad
 optional HTTP/HTTPS patterns in the manifest to support an arbitrary LAN or
 Tailscale hostname, but no such origin is granted silently.
@@ -76,6 +77,13 @@ only from SHA-256 and server-selected extensions, and traversal-safe resolution
 keeps every file below `MEDIA_DATA_PATH`. X media is accepted only from
 `pbs.twimg.com` and `video.twimg.com`; Instagram media is limited to Instagram
 and Facebook CDN hostnames.
+
+Read-later metadata fetching accepts only HTTP(S), pins a DNS result for each
+request, rejects credentials and non-public IPv4/IPv6 ranges before every
+redirect, and enforces strict time, redirect, MIME, and byte limits. Generic
+preview images are restricted to safe raster formats; SVG and HTML are never
+stored as media. A blocked or failed enrichment never prevents the URL itself
+from being saved.
 
 ## Operational requirements
 

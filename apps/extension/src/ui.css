@@ -2,7 +2,7 @@
   color: #22231f;
   background: #f5f5f2;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Avenir Next", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     sans-serif;
 }
 
@@ -64,4 +64,150 @@ button {
 
 .error {
   color: #a32828;
+}
+
+.popup-shell {
+  width: 360px;
+  padding: 14px;
+  background:
+    linear-gradient(rgb(31 34 29 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(31 34 29 / 4%) 1px, transparent 1px),
+    #f5f6f2;
+  background-size: 24px 24px;
+}
+
+.popup-header,
+.popup-footer,
+.popup-header > div,
+.popup-footer > div {
+  display: flex;
+  align-items: center;
+}
+
+.popup-header {
+  justify-content: space-between;
+  padding: 4px 3px 13px;
+}
+
+.popup-header > div {
+  gap: 8px;
+}
+
+.popup-header strong {
+  font-size: 15px;
+}
+
+.popup-header span,
+.eyebrow,
+.capture-host,
+.popup-footer {
+  color: #747a71;
+  font-size: 11px;
+}
+
+.popup-header span,
+.eyebrow {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.server-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #999e96;
+}
+
+.server-dot.online {
+  background: #7ab83d;
+  box-shadow: 0 0 0 4px rgb(122 184 61 / 14%);
+}
+
+.server-dot.offline {
+  background: #b7483d;
+}
+
+.capture-panel {
+  padding: 18px;
+  border: 1px solid #dce0d8;
+  border-radius: 14px;
+  background: rgb(252 253 250 / 94%);
+  box-shadow: 0 16px 42px rgb(29 34 26 / 8%);
+}
+
+.eyebrow {
+  margin: 0 0 15px;
+  font-weight: 700;
+}
+
+.capture-panel h1 {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.capture-host {
+  overflow: hidden;
+  margin: 6px 0 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-panel input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid #d6dad2;
+  border-radius: 8px;
+  background: #f8f9f6;
+  outline: none;
+}
+
+.capture-panel input:focus {
+  border-color: #8a9d72;
+  box-shadow: 0 0 0 3px rgb(184 244 93 / 18%);
+}
+
+.capture-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 9px;
+  border: 1px solid #8bae55;
+  border-radius: 8px;
+  background: #b8f45d;
+  color: #20310e;
+  font-weight: 700;
+}
+
+.capture-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.unsupported,
+.capture-warning {
+  color: #7a4c43;
+  font-size: 12px;
+}
+
+.popup-footer {
+  justify-content: space-between;
+  padding: 13px 3px 0;
+}
+
+.popup-footer > div {
+  gap: 4px;
+}
+
+.popup-footer button {
+  padding: 5px 7px;
+  border: 0;
+  background: transparent;
+  color: #33382f;
+  font-size: 12px;
 }

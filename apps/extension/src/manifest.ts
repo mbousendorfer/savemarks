@@ -5,7 +5,7 @@ export default defineManifest({
   name: "SaveMarks",
   version: "0.1.0",
   description: "Privately synchronize your own X and Instagram saved posts.",
-  permissions: ["storage", "alarms"],
+  permissions: ["storage", "alarms", "activeTab", "scripting", "contextMenus"],
   host_permissions: [
     "https://x.com/*",
     "https://twitter.com/*",

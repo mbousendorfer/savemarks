@@ -3,7 +3,10 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { readJson } from "../../../../lib/http";
 
-const updateBookmarkSchema = z.object({ archived: z.boolean() }).strict();
+const updateBookmarkSchema = z
+  .object({ archived: z.boolean().optional(), read: z.boolean().optional() })
+  .strict()
+  .refine((value) => value.archived !== undefined || value.read !== undefined);
 
 export async function PATCH(
   request: Request,
@@ -22,11 +25,26 @@ export async function PATCH(
   const { id } = await context.params;
   const [updated] = await database()
     .update(bookmarks)
-    .set({ archived: parsed.data.archived, updatedAt: new Date() })
+    .set({
+      ...(parsed.data.archived !== undefined
+        ? { archived: parsed.data.archived }
+        : {}),
+      ...(parsed.data.read !== undefined
+        ? { readAt: parsed.data.read ? new Date() : null }
+        : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(bookmarks.id, id))
-    .returning({ id: bookmarks.id, archived: bookmarks.archived });
+    .returning({
+      id: bookmarks.id,
+      archived: bookmarks.archived,
+      readAt: bookmarks.readAt,
+    });
   if (!updated) {
     return Response.json({ error: "Bookmark not found" }, { status: 404 });
   }
-  return Response.json(updated);
+  return Response.json({
+    ...updated,
+    readAt: updated.readAt?.toISOString() ?? null,
+  });
 }
