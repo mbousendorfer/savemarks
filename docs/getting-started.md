@@ -110,9 +110,10 @@ ensuite afficher **Connected** et **online**.
    importés apparaissent directement dans la bibliothèque.
 
 La barre latérale filtre par source et type de média. La recherche porte sur le
-texte, le nom, le compte de l’auteur et les tags. Cliquer sur une carte ouvre sa
-fiche, permet d’ajouter ou retirer des tags et donne le lien vers la publication
-originale.
+texte, le nom, le compte de l’auteur et les tags. La barre d’exploration permet
+de combiner période, tag et ordre de tri. Cliquer sur une carte ouvre sa fiche,
+permet de parcourir tous ses médias, d’ajouter ou retirer des tags, de
+l’archiver et d’ouvrir la publication originale.
 
 Les médias synchronisés sont téléchargés automatiquement sous
 `data/media/x/media/pictures` et `data/media/x/media/videos`. En Docker, ces

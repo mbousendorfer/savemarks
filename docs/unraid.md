@@ -53,9 +53,10 @@ vient de l’image `ghcr.io`.
 
 ## 2. Configurer les secrets
 
-Générer deux valeurs différentes :
+Générer trois valeurs différentes :
 
 ```bash
+openssl rand -hex 32
 openssl rand -hex 32
 openssl rand -hex 32
 ```
@@ -65,6 +66,8 @@ Dans `.env`, remplacer au minimum :
 ```dotenv
 POSTGRES_PASSWORD=<première-valeur>
 SAVEMARKS_TOKEN_PEPPER=<seconde-valeur>
+SAVEMARKS_WEB_USERNAME=savemarks
+SAVEMARKS_WEB_PASSWORD=<troisième-valeur>
 SAVEMARKS_ALLOWED_EXTENSION_IDS=<id-extension-chrome>
 POSTGRES_DATA_PATH=/mnt/user/appdata/savemarks/postgres
 SAVEMARKS_DATA_PATH=/mnt/user/appdata/savemarks/data
@@ -76,6 +79,12 @@ PGID=100
 possible de choisir un autre UID/GID si les partages utilisent d’autres
 permissions. Le fichier `.env` contient des secrets et ne doit pas être
 committé.
+
+À l’ouverture de la web app, le navigateur demandera ce nom d’utilisateur et
+ce mot de passe. Cette protection couvre également les médias locaux. Sur un
+LAN qui n’est pas entièrement de confiance ou pour un accès distant, publier
+SaveMarks derrière HTTPS (par exemple avec Tailscale Serve) afin de chiffrer les
+identifiants pendant le transport.
 
 ## 3. Donner accès à l’image
 

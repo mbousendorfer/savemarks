@@ -1,12 +1,9 @@
-import {
-  database,
-  extensionClients,
-  pairingCodes,
-} from "@savemarks/database";
+import { database, extensionClients, pairingCodes } from "@savemarks/database";
 import { pairingExchangeSchema } from "@savemarks/shared";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { corsHeaders, originAllowed } from "../../../../lib/cors";
 import { createApiToken, hashSecret } from "../../../../lib/security";
+import { rateLimit, readJson } from "../../../../lib/http";
 
 export async function OPTIONS(request: Request) {
   return new Response(null, {
@@ -18,12 +15,31 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const headers = corsHeaders(request);
   if (!originAllowed(request)) {
-    return Response.json({ error: "Origin not allowed" }, { status: 403, headers });
+    return Response.json(
+      { error: "Origin not allowed" },
+      { status: 403, headers },
+    );
   }
 
-  const parsed = pairingExchangeSchema.safeParse(await request.json());
+  const limited = rateLimit(request, "pairing-exchange", 20, 10 * 60_000);
+  if (limited) {
+    for (const [name, value] of new Headers(headers))
+      limited.headers.set(name, value);
+    return limited;
+  }
+
+  const json = await readJson(request, 8_192);
+  if (!json.ok) {
+    for (const [name, value] of new Headers(headers))
+      json.response.headers.set(name, value);
+    return json.response;
+  }
+  const parsed = pairingExchangeSchema.safeParse(json.value);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid pairing request" }, { status: 400, headers });
+    return Response.json(
+      { error: "Invalid pairing request" },
+      { status: 400, headers },
+    );
   }
 
   const codeHash = hashSecret(parsed.data.code);

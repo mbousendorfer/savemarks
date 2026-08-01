@@ -2,8 +2,9 @@
 
 ## Threat model
 
-SaveMarks assumes a trusted single user and an authenticated private LAN or
-Tailscale network. It still treats source pages, captured responses, media
+SaveMarks assumes a single user. The web application and locally served media
+are protected by HTTP Basic authentication, while the extension uses its own
+revocable bearer token. It still treats source pages, captured responses, media
 servers, extension messages, and API callers as untrusted. Compromise of the
 browser profile or Unraid host is outside the protection boundary.
 
@@ -17,6 +18,12 @@ optional HTTP/HTTPS patterns in the manifest to support an arbitrary LAN or
 Tailscale hostname, but no such origin is granted silently.
 
 ## Authentication data
+
+The production Compose configuration refuses to serve the library until
+`SAVEMARKS_WEB_USERNAME` and `SAVEMARKS_WEB_PASSWORD` are configured. The
+browser keeps the resulting HTTP Basic session; the password is never given to
+the extension. Use HTTPS whenever traffic can leave a fully trusted LAN because
+Basic credentials are only encoded—not encrypted—on plain HTTP.
 
 The page bridge never reads or emits cookies, authorization headers, CSRF
 tokens, session identifiers, or complete request headers. Source credentials
@@ -43,6 +50,12 @@ code. Pairing fails for every other unlisted browser origin.
 Running over plain HTTP is acceptable only on a trusted private network; use a
 Tailscale HTTPS hostname when the local network is not trusted.
 
+Pairing code creation and exchange are rate limited per client address. JSON
+endpoints reject malformed and oversized bodies, mutable web endpoints require
+same-origin requests, and responses include a restrictive Content Security
+Policy, clickjacking protection, MIME sniffing protection, and a locked-down
+browser permissions policy.
+
 ## Redaction and fixtures
 
 Diagnostics is explicit opt-in and bounded. Exports contain URLs, operation
@@ -62,7 +75,13 @@ and Facebook CDN hostnames.
 
 ## Operational requirements
 
-Set a unique `POSTGRES_PASSWORD` and a random `SAVEMARKS_TOKEN_PEPPER`, keep
+Set a unique `POSTGRES_PASSWORD`, web password, and random
+`SAVEMARKS_TOKEN_PEPPER`, keep
 Unraid volumes private, back up PostgreSQL and media together, and revoke the
 extension client after a lost browser profile. Detailed logs must pass through
 the shared redactor and must not contain stack traces in user-facing responses.
+
+The web container uses a read-only root filesystem, a bounded temporary
+filesystem, a PID limit, and only the Linux capabilities needed by the startup
+entrypoint to assign ownership of `/data` before dropping to the configured
+Unraid UID/GID. PostgreSQL is not exposed on the host network.

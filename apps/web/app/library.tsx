@@ -6,6 +6,9 @@ import {
   BookmarksIcon,
   CheckIcon,
   CopyIcon,
+  CalendarBlankIcon,
+  CaretDownIcon,
+  FunnelSimpleIcon,
   GridFourIcon,
   ImageIcon,
   InstagramLogoIcon,
@@ -23,13 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Source = "x" | "instagram";
 type ContentType =
-  | "text"
-  | "image"
-  | "video"
-  | "carousel"
-  | "reel"
-  | "thread"
-  | "quote";
+  "text" | "image" | "video" | "carousel" | "reel" | "thread" | "quote";
 
 interface LibraryMedia {
   id: string;
@@ -71,6 +68,31 @@ type Filter =
   | "text"
   | "archived";
 type View = "grid" | "list";
+type Sort =
+  | "saved-newest"
+  | "saved-oldest"
+  | "published-newest"
+  | "published-oldest"
+  | "imported-newest"
+  | "author-az";
+type Period = "anytime" | "7d" | "30d" | "90d" | "year";
+
+const sortLabels: Record<Sort, string> = {
+  "saved-newest": "Recently saved",
+  "saved-oldest": "Oldest saved",
+  "published-newest": "Newest published",
+  "published-oldest": "Oldest published",
+  "imported-newest": "Recently imported",
+  "author-az": "Author A–Z",
+};
+
+const periodLabels: Record<Period, string> = {
+  anytime: "Any time",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+  year: "Last year",
+};
 
 const filterLabels: Record<Filter, string> = {
   all: "All",
@@ -93,6 +115,12 @@ function displayDate(bookmark: LibraryBookmark): string {
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+function savedTime(bookmark: LibraryBookmark): number {
+  return new Date(
+    bookmark.savedAt ?? bookmark.publishedAt ?? bookmark.importedAt,
+  ).getTime();
 }
 
 function primaryMedia(bookmark: LibraryBookmark): LibraryMedia | undefined {
@@ -174,7 +202,12 @@ function BookmarkCard({
           }
         >
           {/* Remote media remains the fallback until the local downloader stores it. */}
-          <img src={media.url} alt="" loading="lazy" referrerPolicy="no-referrer" />
+          <img
+            src={media.url}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
           {(bookmark.contentType === "video" ||
             bookmark.contentType === "reel") && (
             <span className="media-type">
@@ -235,14 +268,19 @@ function Detail({
   bookmark,
   onClose,
   onTagsChange,
+  onArchivedChange,
 }: {
   bookmark: LibraryBookmark;
   onClose: () => void;
   onTagsChange: (tags: string[]) => void;
+  onArchivedChange: (archived: boolean) => void;
 }) {
   const [tagValue, setTagValue] = useState("");
   const [savingTags, setSavingTags] = useState(false);
   const [tagError, setTagError] = useState<string>();
+  const [activeMedia, setActiveMedia] = useState(0);
+  const [savingArchive, setSavingArchive] = useState(false);
+  const [archiveError, setArchiveError] = useState<string>();
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -251,7 +289,12 @@ function Detail({
     return () => window.removeEventListener("keydown", close);
   }, [onClose]);
 
-  const media = primaryMedia(bookmark);
+  const sortedMedia = useMemo(
+    () =>
+      [...bookmark.media].sort((left, right) => left.position - right.position),
+    [bookmark.media],
+  );
+  const media = sortedMedia[activeMedia] ?? primaryMedia(bookmark);
 
   async function saveTags(nextTags: string[]): Promise<void> {
     setSavingTags(true);
@@ -267,7 +310,9 @@ function Detail({
       onTagsChange(payload.tags);
       setTagValue("");
     } catch (error) {
-      setTagError(error instanceof Error ? error.message : "Could not save tags");
+      setTagError(
+        error instanceof Error ? error.message : "Could not save tags",
+      );
     } finally {
       setSavingTags(false);
     }
@@ -282,10 +327,36 @@ function Detail({
     void saveTags([...bookmark.tags, name]);
   }
 
+  async function toggleArchived(): Promise<void> {
+    setSavingArchive(true);
+    setArchiveError(undefined);
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmark.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ archived: !bookmark.archived }),
+      });
+      if (!response.ok) throw new Error("Could not update this bookmark");
+      const payload = (await response.json()) as { archived: boolean };
+      onArchivedChange(payload.archived);
+    } catch (error) {
+      setArchiveError(
+        error instanceof Error
+          ? error.message
+          : "Could not update this bookmark",
+      );
+    } finally {
+      setSavingArchive(false);
+    }
+  }
+
   return (
     <div className="detail-backdrop" onMouseDown={onClose}>
       <section
         className="detail-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bookmark-detail-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button className="detail-close" onClick={onClose} aria-label="Close">
@@ -293,7 +364,30 @@ function Detail({
         </button>
         {media && (
           <div className="detail-media">
-            <img src={media.url} alt="" referrerPolicy="no-referrer" />
+            {media.mimeType?.startsWith("video/") ? (
+              <video src={media.url} controls preload="metadata" />
+            ) : (
+              <img src={media.url} alt="" referrerPolicy="no-referrer" />
+            )}
+            {sortedMedia.length > 1 && (
+              <div className="media-strip" aria-label="Media gallery">
+                {sortedMedia.map((item, index) => (
+                  <button
+                    key={item.id}
+                    className={activeMedia === index ? "active" : ""}
+                    onClick={() => setActiveMedia(index)}
+                    aria-label={`Show media ${index + 1}`}
+                    aria-pressed={activeMedia === index}
+                  >
+                    {item.mimeType?.startsWith("video/") ? (
+                      <VideoCameraIcon size={18} weight="fill" />
+                    ) : (
+                      <img src={item.url} alt="" referrerPolicy="no-referrer" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <div className="detail-content">
@@ -301,7 +395,7 @@ function Detail({
             <SourceMark source={bookmark.source} />
             {bookmark.source} · {bookmark.contentType}
           </div>
-          <h2>
+          <h2 id="bookmark-detail-title">
             {bookmark.author.displayName ?? `@${bookmark.author.username}`}
           </h2>
           <p className="detail-handle">@{bookmark.author.username}</p>
@@ -315,7 +409,9 @@ function Detail({
                   key={tag}
                   disabled={savingTags}
                   onClick={() =>
-                    void saveTags(bookmark.tags.filter((value) => value !== tag))
+                    void saveTags(
+                      bookmark.tags.filter((value) => value !== tag),
+                    )
                   }
                   title={`Remove ${tag}`}
                 >
@@ -330,7 +426,7 @@ function Detail({
               <input
                 value={tagValue}
                 disabled={savingTags}
-                maxLength={256}
+                maxLength={50}
                 placeholder="Add a tag…"
                 onChange={(event) => setTagValue(event.target.value)}
                 onKeyDown={(event) => {
@@ -340,7 +436,10 @@ function Detail({
                   }
                 }}
               />
-              <button disabled={!tagValue.trim() || savingTags} onClick={addTag}>
+              <button
+                disabled={!tagValue.trim() || savingTags}
+                onClick={addTag}
+              >
                 Add
               </button>
             </div>
@@ -360,15 +459,26 @@ function Detail({
               <dd>{bookmark.sourceItemId}</dd>
             </div>
           </dl>
-          <a
-            className="original-link"
-            href={bookmark.canonicalUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open original
-            <ArrowSquareOutIcon size={17} />
-          </a>
+          <div className="detail-actions">
+            <a
+              className="original-link"
+              href={bookmark.canonicalUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open original
+              <ArrowSquareOutIcon size={17} />
+            </a>
+            <button
+              className="archive-button"
+              disabled={savingArchive}
+              onClick={() => void toggleArchived()}
+            >
+              <ArchiveIcon size={16} />
+              {bookmark.archived ? "Restore" : "Archive"}
+            </button>
+          </div>
+          {archiveError && <p className="tag-error">{archiveError}</p>}
         </div>
       </section>
     </div>
@@ -395,6 +505,9 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
     <div className="detail-backdrop" onMouseDown={onClose}>
       <section
         className="pairing-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pairing-dialog-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button className="detail-close" onClick={onClose} aria-label="Close">
@@ -404,7 +517,7 @@ function PairingDialog({ onClose }: { onClose: () => void }) {
           <LinkIcon size={24} weight="bold" />
         </div>
         <p className="eyebrow">Browser connection</p>
-        <h2>Pair the extension</h2>
+        <h2 id="pairing-dialog-title">Pair the extension</h2>
         <p>Generate a single-use code, then enter it in SaveMarks Settings.</p>
         {code && (
           <button
@@ -437,6 +550,9 @@ export function Library({
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("grid");
+  const [sort, setSort] = useState<Sort>("saved-newest");
+  const [period, setPeriod] = useState<Period>("anytime");
+  const [tag, setTag] = useState("all");
   const [selected, setSelected] = useState<LibraryBookmark>();
   const [pairing, setPairing] = useState(false);
 
@@ -450,10 +566,26 @@ export function Library({
     return () => refreshes.forEach((timer) => window.clearTimeout(timer));
   }, [router]);
 
+  const allTags = useMemo(
+    () => [...new Set(bookmarks.flatMap((bookmark) => bookmark.tags))].sort(),
+    [bookmarks],
+  );
+
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
-    return bookmarks.filter((bookmark) => {
+    const periodDays: Partial<Record<Period, number>> = {
+      "7d": 7,
+      "30d": 30,
+      "90d": 90,
+      year: 365,
+    };
+    const cutoff = periodDays[period]
+      ? Date.now() - periodDays[period]! * 86_400_000
+      : undefined;
+    const filtered = bookmarks.filter((bookmark) => {
       if (!matchesFilter(bookmark, filter)) return false;
+      if (tag !== "all" && !bookmark.tags.includes(tag)) return false;
+      if (cutoff && savedTime(bookmark) < cutoff) return false;
       if (!needle) return true;
       return [
         bookmark.text,
@@ -468,7 +600,41 @@ export function Library({
         .toLocaleLowerCase()
         .includes(needle);
     });
-  }, [bookmarks, filter, query]);
+    const time = (value: string | null, fallback: string) =>
+      new Date(value ?? fallback).getTime();
+    return filtered.sort((left, right) => {
+      if (sort === "saved-oldest") {
+        return savedTime(left) - savedTime(right);
+      }
+      if (sort === "published-newest") {
+        return (
+          time(right.publishedAt, right.importedAt) -
+          time(left.publishedAt, left.importedAt)
+        );
+      }
+      if (sort === "published-oldest") {
+        return (
+          time(left.publishedAt, left.importedAt) -
+          time(right.publishedAt, right.importedAt)
+        );
+      }
+      if (sort === "imported-newest") {
+        return (
+          time(right.importedAt, right.importedAt) -
+          time(left.importedAt, left.importedAt)
+        );
+      }
+      if (sort === "author-az") {
+        return (left.author.displayName ?? left.author.username).localeCompare(
+          right.author.displayName ?? right.author.username,
+        );
+      }
+      return savedTime(right) - savedTime(left);
+    });
+  }, [bookmarks, filter, period, query, sort, tag]);
+
+  const hasRefinements =
+    query.trim() !== "" || period !== "anytime" || tag !== "all";
 
   const counts = useMemo(
     () => ({
@@ -554,13 +720,15 @@ export function Library({
             <p className="eyebrow">Private archive</p>
             <h1>{filterLabels[filter]}</h1>
             <p className="result-count">
-              {visible.length} saved {visible.length === 1 ? "item" : "items"}
+              Showing {visible.length} of {counts[filter]} saved{" "}
+              {counts[filter] === 1 ? "item" : "items"}
             </p>
           </div>
           <div className="header-actions">
             <label className="search">
               <MagnifyingGlassIcon size={19} />
               <input
+                aria-label="Search bookmarks"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search your memory…"
@@ -589,6 +757,74 @@ export function Library({
             </div>
           </div>
         </header>
+
+        <div className="explore-bar" aria-label="Library controls">
+          <div className="control-group">
+            <FunnelSimpleIcon size={16} />
+            <label>
+              <span>Sort</span>
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value as Sort)}
+              >
+                {(Object.entries(sortLabels) as [Sort, string][]).map(
+                  ([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </select>
+              <CaretDownIcon size={12} />
+            </label>
+            <label>
+              <CalendarBlankIcon size={15} />
+              <span>Saved</span>
+              <select
+                value={period}
+                onChange={(event) => setPeriod(event.target.value as Period)}
+              >
+                {(Object.entries(periodLabels) as [Period, string][]).map(
+                  ([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </select>
+              <CaretDownIcon size={12} />
+            </label>
+            <label>
+              <TagIcon size={15} />
+              <span>Tag</span>
+              <select
+                value={tag}
+                onChange={(event) => setTag(event.target.value)}
+              >
+                <option value="all">All tags</option>
+                {allTags.map((value) => (
+                  <option key={value} value={value}>
+                    #{value}
+                  </option>
+                ))}
+              </select>
+              <CaretDownIcon size={12} />
+            </label>
+          </div>
+          {hasRefinements && (
+            <button
+              className="clear-filters"
+              onClick={() => {
+                setQuery("");
+                setPeriod("anytime");
+                setTag("all");
+              }}
+            >
+              Clear filters
+              <XIcon size={13} />
+            </button>
+          )}
+        </div>
 
         {visible.length > 0 ? (
           <div className={`bookmark-grid bookmark-grid--${view}`}>
@@ -628,6 +864,14 @@ export function Library({
             setSelected((item) =>
               item ? { ...item, tags: nextTags } : undefined,
             );
+          }}
+          onArchivedChange={(archived) => {
+            setBookmarks((items) =>
+              items.map((item) =>
+                item.id === selected.id ? { ...item, archived } : item,
+              ),
+            );
+            setSelected((item) => (item ? { ...item, archived } : undefined));
           }}
         />
       )}

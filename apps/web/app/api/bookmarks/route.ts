@@ -1,14 +1,10 @@
-import {
-  authors,
-  bookmarks,
-  database,
-  mediaAssets,
-} from "@savemarks/database";
+import { authors, bookmarks, database, mediaAssets } from "@savemarks/database";
 import { bookmarkIngestSchema, normalizedUrlHash } from "@savemarks/shared";
 import { and, eq } from "drizzle-orm";
 import { corsHeaders, originAllowed } from "../../../lib/cors";
 import { authenticate } from "../../../lib/auth";
 import { startMediaSync } from "../../../lib/media-download";
+import { readJson } from "../../../lib/http";
 
 export async function OPTIONS(request: Request) {
   return new Response(null, {
@@ -20,15 +16,30 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const headers = corsHeaders(request);
   if (!originAllowed(request)) {
-    return Response.json({ error: "Origin not allowed" }, { status: 403, headers });
+    return Response.json(
+      { error: "Origin not allowed" },
+      { status: 403, headers },
+    );
   }
   if (!(await authenticate(request))) {
-    return Response.json({ error: "Pairing required" }, { status: 401, headers });
+    return Response.json(
+      { error: "Pairing required" },
+      { status: 401, headers },
+    );
   }
 
-  const parsed = bookmarkIngestSchema.safeParse(await request.json());
+  const json = await readJson(request, 1_000_000);
+  if (!json.ok) {
+    for (const [name, value] of new Headers(headers))
+      json.response.headers.set(name, value);
+    return json.response;
+  }
+  const parsed = bookmarkIngestSchema.safeParse(json.value);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid bookmark payload" }, { status: 400, headers });
+    return Response.json(
+      { error: "Invalid bookmark payload" },
+      { status: 400, headers },
+    );
   }
   const item = parsed.data.bookmark;
   const result = await database().transaction(async (tx) => {
@@ -121,5 +132,8 @@ export async function POST(request: Request) {
     return { duplicate: false, id: bookmark.id };
   });
   if (!result.duplicate) void startMediaSync(25);
-  return Response.json(result, { status: result.duplicate ? 200 : 201, headers });
+  return Response.json(result, {
+    status: result.duplicate ? 200 : 201,
+    headers,
+  });
 }

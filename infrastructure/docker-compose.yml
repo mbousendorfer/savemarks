@@ -23,6 +23,8 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-savemarks}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-savemarks}
       SAVEMARKS_TOKEN_PEPPER: ${SAVEMARKS_TOKEN_PEPPER:?set SAVEMARKS_TOKEN_PEPPER}
+      SAVEMARKS_WEB_USERNAME: ${SAVEMARKS_WEB_USERNAME:-savemarks}
+      SAVEMARKS_WEB_PASSWORD: ${SAVEMARKS_WEB_PASSWORD:?set SAVEMARKS_WEB_PASSWORD}
       SAVEMARKS_ALLOWED_EXTENSION_IDS: ${SAVEMARKS_ALLOWED_EXTENSION_IDS:-}
       SAVEMARKS_DEV_ORIGINS: ${SAVEMARKS_DEV_ORIGINS:-}
       MEDIA_DATA_PATH: /data/media
@@ -34,6 +36,17 @@ services:
       - "${SAVEMARKS_PORT:-3210}:3210"
     volumes:
       - ${SAVEMARKS_DATA_PATH:-/mnt/user/appdata/savemarks/data}:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    pids_limit: 256
+    stop_grace_period: 20s
     healthcheck:
       test:
         [
@@ -43,3 +56,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+      start_period: 20s

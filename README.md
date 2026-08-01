@@ -52,6 +52,10 @@ contenant tous les médias et exports. Le serveur Unraid n’a donc besoin ni du
 code source ni de Node.js. Voir le
 [guide Unraid pas à pas](docs/unraid.md).
 
+En production, la bibliothèque et ses médias locaux sont protégés par un nom
+d’utilisateur et un mot de passe configurés dans `.env`. L’extension conserve
+une authentification séparée par jeton révocable.
+
 ## Commandes utiles
 
 | Commande                  | Effet                                                       |

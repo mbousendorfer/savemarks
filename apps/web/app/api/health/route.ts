@@ -2,7 +2,7 @@ export async function GET() {
   return Response.json({
     status: "ok",
     service: "savemarks",
-    milestone: "extraction-spike",
+    version: 1,
     time: new Date().toISOString(),
   });
 }
